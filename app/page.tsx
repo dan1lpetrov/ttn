@@ -26,6 +26,7 @@ declare global {
                         auto_select?: boolean;
                         context?: string;
                         ux_mode?: string;
+                        use_fedcm_for_prompt?: boolean;
                     }) => void;
                     renderButton: (
                         element: HTMLElement,
@@ -108,17 +109,26 @@ export default function Home() {
                     },
                     auto_select: true,
                     context: 'signin',
-                    ux_mode: 'button',
+                    ux_mode: 'popup',
+                    use_fedcm_for_prompt: true,
                 });
 
-                if (googleButtonRef.current) {
-                    window.google.accounts.id.renderButton(googleButtonRef.current, {
-                        theme: 'outline',
-                        size: 'large',
-                        shape: 'pill',
-                        type: 'standard',
-                        text: 'continue_with',
-                        logo_alignment: 'left',
+                // Try to show One Tap
+                if (window.google?.accounts?.id) {
+                    window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
+                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                            // If One Tap is not shown, render the standard button
+                            if (googleButtonRef.current) {
+                                window.google.accounts.id.renderButton(googleButtonRef.current, {
+                                    theme: 'outline',
+                                    size: 'large',
+                                    shape: 'pill',
+                                    type: 'standard',
+                                    text: 'signin_with',
+                                    logo_alignment: 'left',
+                                });
+                            }
+                        }
                     });
                 }
             } else {
