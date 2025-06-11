@@ -48,7 +48,6 @@ declare global {
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isGoogleReady, setIsGoogleReady] = useState(false);
     const googleButtonRef = useRef<HTMLDivElement>(null);
     const supabase = createClientComponentClient();
 
@@ -76,14 +75,11 @@ export default function Home() {
             script.src = 'https://accounts.google.com/gsi/client';
             script.async = true;
             script.defer = true;
-            script.onload = () => setIsGoogleReady(true);
             document.head.appendChild(script);
         };
 
         if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
             loadGoogleScript();
-        } else {
-            setIsGoogleReady(true);
         }
     }, []);
 
