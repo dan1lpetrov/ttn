@@ -73,6 +73,9 @@ export default function AddClientForm() {
             >
                 Додати клієнта
             </button>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+                Додайте клієнта, щоб почати відстежувати його платежі
+            </p>
         </form>
     );
 } 
