@@ -27,7 +27,7 @@ export default function AddClientForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Ім'я
+                    Ім&apos;я
                 </label>
                 <input
                     type="text"
