@@ -118,7 +118,7 @@ export default function Home() {
                     window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
                         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
                             // If One Tap is not shown, render the standard button
-                            if (googleButtonRef.current) {
+                            if (googleButtonRef.current && window.google?.accounts?.id) {
                                 window.google.accounts.id.renderButton(googleButtonRef.current, {
                                     theme: 'outline',
                                     size: 'large',
