@@ -128,31 +128,21 @@ export default function Home() {
                 },
                 auto_select: true,
                 context: 'signin',
-                ux_mode: 'popup',
+                ux_mode: 'button',
                 use_fedcm_for_prompt: true,
             });
 
-            console.log('Trying to show One Tap...');
-            window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
-                console.log('One Tap notification:', {
-                    isNotDisplayed: notification.isNotDisplayed(),
-                    isSkippedMoment: notification.isSkippedMoment()
+            console.log('Rendering personalized button...');
+            if (googleButtonRef.current && window.google?.accounts?.id) {
+                window.google.accounts.id.renderButton(googleButtonRef.current, {
+                    theme: 'outline',
+                    size: 'large',
+                    shape: 'pill',
+                    type: 'standard',
+                    text: 'signin_with',
+                    logo_alignment: 'left',
                 });
-
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    console.log('One Tap not shown, rendering standard button...');
-                    if (googleButtonRef.current && window.google?.accounts?.id) {
-                        window.google.accounts.id.renderButton(googleButtonRef.current, {
-                            theme: 'outline',
-                            size: 'large',
-                            shape: 'pill',
-                            type: 'standard',
-                            text: 'signin_with',
-                            logo_alignment: 'left',
-                        });
-                    }
-                }
-            });
+            }
         };
 
         if (!user) {
