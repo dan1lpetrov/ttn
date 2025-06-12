@@ -72,71 +72,93 @@ export default function Home() {
 
     useEffect(() => {
         const loadGoogleScript = () => {
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
+            return new Promise<void>((resolve) => {
+                console.log('Starting to load Google script...');
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    console.log('Google script loaded successfully');
+                    resolve();
+                };
+                script.onerror = (error) => {
+                    console.error('Error loading Google script:', error);
+                    resolve();
+                };
+                document.head.appendChild(script);
+            });
         };
 
-        if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
-            loadGoogleScript();
-        }
-    }, []);
+        const initializeGoogle = async () => {
+            console.log('Initializing Google Sign-In...');
+            console.log('Client ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+            console.log('Window location:', window.location.origin);
 
-    useEffect(() => {
-        if (user || !googleButtonRef.current) return;
+            if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+                console.log('Google script not found, loading...');
+                await loadGoogleScript();
+            }
 
-        const waitForGoogle = () => {
-            if (window.google?.accounts?.id) {
-                window.google.accounts.id.initialize({
-                    client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-                    callback: async (response: GoogleCredentialResponse) => {
-                        setLoading(true);
-                        const idToken = response.credential;
+            if (!window.google?.accounts?.id) {
+                console.log('Google not available yet, retrying in 200ms...');
+                setTimeout(initializeGoogle, 200);
+                return;
+            }
 
-                        const { error } = await supabase.auth.signInWithIdToken({
-                            provider: 'google',
-                            token: idToken,
-                        });
+            console.log('Google is available, initializing...');
+            window.google.accounts.id.initialize({
+                client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+                callback: async (response: GoogleCredentialResponse) => {
+                    console.log('Google Sign-In callback received');
+                    setLoading(true);
+                    const idToken = response.credential;
 
-                        if (error) {
-                            console.error('Sign-in failed', error);
-                            setLoading(false);
-                        } else {
-                            window.location.reload();
-                        }
-                    },
-                    auto_select: true,
-                    context: 'signin',
-                    ux_mode: 'popup',
-                    use_fedcm_for_prompt: true,
+                    const { error } = await supabase.auth.signInWithIdToken({
+                        provider: 'google',
+                        token: idToken,
+                    });
+
+                    if (error) {
+                        console.error('Sign-in failed', error);
+                        setLoading(false);
+                    } else {
+                        window.location.reload();
+                    }
+                },
+                auto_select: true,
+                context: 'signin',
+                ux_mode: 'popup',
+                use_fedcm_for_prompt: true,
+            });
+
+            console.log('Trying to show One Tap...');
+            window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
+                console.log('One Tap notification:', {
+                    isNotDisplayed: notification.isNotDisplayed(),
+                    isSkippedMoment: notification.isSkippedMoment()
                 });
 
-                // Try to show One Tap
-                if (window.google?.accounts?.id) {
-                    window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
-                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                            // If One Tap is not shown, render the standard button
-                            if (googleButtonRef.current && window.google?.accounts?.id) {
-                                window.google.accounts.id.renderButton(googleButtonRef.current, {
-                                    theme: 'outline',
-                                    size: 'large',
-                                    shape: 'pill',
-                                    type: 'standard',
-                                    text: 'signin_with',
-                                    logo_alignment: 'left',
-                                });
-                            }
-                        }
-                    });
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    console.log('One Tap not shown, rendering standard button...');
+                    if (googleButtonRef.current && window.google?.accounts?.id) {
+                        window.google.accounts.id.renderButton(googleButtonRef.current, {
+                            theme: 'outline',
+                            size: 'large',
+                            shape: 'pill',
+                            type: 'standard',
+                            text: 'signin_with',
+                            logo_alignment: 'left',
+                        });
+                    }
                 }
-            } else {
-                setTimeout(waitForGoogle, 200);
-            }
+            });
         };
 
-        waitForGoogle();
+        if (!user) {
+            console.log('User not logged in, starting Google initialization...');
+            initializeGoogle();
+        }
     }, [user, supabase.auth]);
 
     if (loading) {
