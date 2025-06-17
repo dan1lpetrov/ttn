@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Modal from './Modal';
 import SenderForm from './SenderForm';
@@ -21,33 +21,30 @@ export default function SendersList() {
     const [showAddModal, setShowAddModal] = useState(false);
     const supabase = createClientComponentClient();
 
-    const fetchSenders = async () => {
+    const fetchSenders = useCallback(async () => {
         try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                throw new Error('Необхідна авторизація');
-            }
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
 
-            const { data, error: fetchError } = await supabase
+            const { data, error } = await supabase
                 .from('sender')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (fetchError) {
-                throw new Error(fetchError.message);
-            }
-
+            if (error) throw error;
             setSenders(data || []);
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Помилка при завантаженні відправників');
+        } catch (err) {
+            console.error('Error fetching senders:', err);
+            setError('Помилка при завантаженні відправників');
         } finally {
             setLoading(false);
         }
-    };
+    }, [supabase]);
 
     useEffect(() => {
         fetchSenders();
-    }, [fetchSenders, supabase]);
+    }, [fetchSenders]);
 
     if (loading) {
         return (
