@@ -279,7 +279,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             <div>
                                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Ім'я
+                                    Ім&apos;я
                                 </label>
                                 <input
                                     type="text"
