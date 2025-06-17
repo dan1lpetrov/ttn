@@ -51,9 +51,6 @@ const isCyrillic = (text: string): boolean => {
     return /^[\u0400-\u04FF\s]+$/.test(text);
 };
 
-const NOVA_POSHTA_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
-const API_KEY = process.env.NOVA_POSHTA_API_KEY;
-
 // Функція для створення контакту в Новій Пошті
 async function createNovaPoshtaContact(firstName: string, lastName: string, phone: string) {
     console.log('Creating Nova Poshta contact with data:', { firstName, lastName, phone });
