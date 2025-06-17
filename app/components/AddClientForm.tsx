@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 
 interface City {
     Ref: string;
@@ -16,6 +17,40 @@ interface Warehouse {
 interface AddClientFormProps {
     onSuccess?: () => void;
 }
+
+// Додаємо функцію для форматування телефону
+const formatPhoneNumber = (phone: string): string => {
+    // Видаляємо всі символи крім цифр
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Якщо номер починається з 380, залишаємо як є
+    if (cleaned.startsWith('380')) {
+        return cleaned;
+    }
+    
+    // Якщо номер починається з 0, замінюємо на 380
+    if (cleaned.startsWith('0')) {
+        return '380' + cleaned.slice(1);
+    }
+    
+    // Якщо номер починається з 8, замінюємо на 380
+    if (cleaned.startsWith('8')) {
+        return '380' + cleaned.slice(1);
+    }
+    
+    // Якщо номер починається з +380, видаляємо +
+    if (cleaned.startsWith('380')) {
+        return cleaned;
+    }
+    
+    // В інших випадках додаємо 380 на початок
+    return '380' + cleaned;
+};
+
+// Функція для перевірки кирилиці
+const isCyrillic = (text: string): boolean => {
+    return /^[\u0400-\u04FF\s]+$/.test(text);
+};
 
 export default function AddClientForm({ onSuccess }: AddClientFormProps) {
     const [firstName, setFirstName] = useState('');
@@ -157,6 +192,22 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
         setError(null);
 
         try {
+            // Перевіряємо кирилицю для імені та прізвища
+            if (!isCyrillic(firstName)) {
+                throw new Error('Ім&apos;я має містити тільки українські літери');
+            }
+            if (!isCyrillic(lastName)) {
+                throw new Error('Прізвище має містити тільки українські літери');
+            }
+
+            // Форматуємо телефон
+            const formattedPhone = formatPhoneNumber(phone);
+            
+            // Перевіряємо довжину телефону
+            if (formattedPhone.length !== 12) {
+                throw new Error('Номер телефону має містити 12 цифр');
+            }
+
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user found');
 
@@ -169,7 +220,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                     {
                         first_name: firstName,
                         last_name: lastName,
-                        phone,
+                        phone: formattedPhone,
                         city_ref: selectedCity,
                         city_name: selectedCityData?.Description,
                         warehouse_ref: selectedWarehouse,
@@ -192,10 +243,16 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             if (onSuccess) onSuccess();
         } catch (err) {
             console.error('Error adding client:', err);
-            setError('Помилка при додаванні клієнта');
+            setError(err instanceof Error ? err.message : 'Помилка при додаванні клієнта');
         } finally {
             setLoading(false);
         }
+    };
+
+    // Додаємо обробник зміни телефону
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setPhone(value);
     };
 
     return (
@@ -231,6 +288,8 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                     value={firstName}
                                     onChange={(e) => setFirstName(e.target.value)}
                                     required
+                                    pattern="[\u0400-\u04FF\s]+"
+                                    title="Введіть тільки українські літери"
                                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
                                 />
                             </div>
@@ -244,6 +303,8 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                     value={lastName}
                                     onChange={(e) => setLastName(e.target.value)}
                                     required
+                                    pattern="[\u0400-\u04FF\s]+"
+                                    title="Введіть тільки українські літери"
                                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
                                 />
                             </div>
@@ -256,8 +317,9 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                 type="tel"
                                 id="phone"
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                onChange={handlePhoneChange}
                                 required
+                                placeholder="+380XXXXXXXXX"
                                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
                             />
                         </div>

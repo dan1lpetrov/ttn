@@ -47,26 +47,7 @@ export default function SendersList() {
 
     useEffect(() => {
         fetchSenders();
-
-        // Підписуємось на зміни в таблиці sender
-        const channel = supabase
-            .channel('sender_changes')
-            .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'sender' 
-                }, 
-                () => {
-                    fetchSenders();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
+    }, [fetchSenders, supabase]);
 
     if (loading) {
         return (

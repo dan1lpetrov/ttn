@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 const NOVA_POSHTA_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
 const API_KEY = process.env.NOVA_POSHTA_API_KEY;
 
+interface Warehouse {
+    Description: string;
+    Ref: string;
+    [key: string]: string | number | boolean;
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const cityRef = searchParams.get('cityRef');
@@ -45,7 +51,7 @@ export async function GET(request: Request) {
 
         // Якщо пошук - число, шукаємо відділення, що містять це число
         if (!isNaN(Number(searchQuery))) {
-            const filteredData = data.data.filter((warehouse: any) => 
+            const filteredData = data.data.filter((warehouse: Warehouse) => 
                 warehouse.Description.includes(searchQuery)
             );
             return NextResponse.json({ success: true, data: filteredData });

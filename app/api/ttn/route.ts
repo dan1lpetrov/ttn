@@ -7,13 +7,36 @@ const NOVA_POSHTA_API_KEY = process.env.NOVA_POSHTA_API_KEY;
 
 interface NovaPoshtaResponse {
     success: boolean;
-    data: any[];
-    errors: any[];
-    warnings: any[];
-    info: any[];
+    data: Array<{
+        Ref: string;
+        IntDocNumber: string;
+        [key: string]: string | number | boolean;
+    }>;
+    errors: string[];
+    warnings: string[];
+    info: string[];
 }
 
-async function createNovaPoshtaTTN(client: any, sender: any, description: string, cost: number) {
+interface Client {
+    id: string;
+    city_name: string;
+    warehouse_name: string;
+    contact_ref: string;
+    phone: string;
+    [key: string]: string | number | boolean;
+}
+
+interface Sender {
+    id: string;
+    city_ref: string;
+    sender_ref: string;
+    sender_address_ref: string;
+    contact_sender_ref: string;
+    phone: string;
+    [key: string]: string | number | boolean;
+}
+
+async function createNovaPoshtaTTN(client: Client, sender: Sender, description: string, cost: number) {
     // Спочатку отримуємо місто отримувача
     const cityRequest = {
         apiKey: NOVA_POSHTA_API_KEY,
@@ -63,7 +86,7 @@ async function createNovaPoshtaTTN(client: any, sender: any, description: string
 
     // Шукаємо відділення за номером
     const warehouseNumber = client.warehouse_name.match(/\d+/)?.[0];
-    const recipientWarehouse = warehouseData.data.find(w => 
+    const recipientWarehouse = warehouseData.data.find((w: { Number: string; Description: string }) => 
         w.Number === warehouseNumber || 
         w.Description.includes(warehouseNumber || '')
     ) || warehouseData.data[0];
