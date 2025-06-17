@@ -51,6 +51,53 @@ const isCyrillic = (text: string): boolean => {
     return /^[\u0400-\u04FF\s]+$/.test(text);
 };
 
+const NOVA_POSHTA_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
+const API_KEY = process.env.NOVA_POSHTA_API_KEY;
+
+// Функція для створення контакту в Новій Пошті
+async function createNovaPoshtaContact(firstName: string, lastName: string, phone: string) {
+    console.log('Creating Nova Poshta contact with data:', { firstName, lastName, phone });
+    
+    const response = await fetch('/api/nova-poshta/counterparty', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firstName, lastName, phone }),
+    });
+
+    const data = await response.json();
+    console.log('Nova Poshta contact response:', data);
+
+    if (!data.success) {
+        throw new Error(data.error);
+    }
+
+    return data.data;
+}
+
+// Функція для створення контрагента в Новій Пошті
+async function createNovaPoshtaCounterparty(firstName: string, lastName: string, phone: string) {
+    console.log('Creating Nova Poshta counterparty with data:', { firstName, lastName, phone });
+    
+    const response = await fetch('/api/nova-poshta/counterparty', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firstName, lastName, phone }),
+    });
+
+    const data = await response.json();
+    console.log('Nova Poshta counterparty response:', data);
+
+    if (!data.success) {
+        throw new Error(data.error);
+    }
+
+    return data.data;
+}
+
 export default function AddClientForm({ onSuccess }: AddClientFormProps) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -213,6 +260,20 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             const selectedCityData = cities.find(city => city.Ref === selectedCity);
             const selectedWarehouseData = warehouses.find(warehouse => warehouse.Ref === selectedWarehouse);
 
+            console.log('Creating Nova Poshta entities...');
+            
+            // Створюємо контакт та контрагента в Новій Пошті
+            const contact = await createNovaPoshtaContact(firstName, lastName, formattedPhone);
+            console.log('Contact created:', contact);
+            
+            const counterparty = await createNovaPoshtaCounterparty(firstName, lastName, formattedPhone);
+            console.log('Counterparty created:', counterparty);
+
+            console.log('Saving client to database with refs:', {
+                contact_ref: contact.Ref,
+                counterparty_ref: counterparty.Ref
+            });
+
             const { error: insertError } = await supabase
                 .from('clients')
                 .insert([
@@ -225,12 +286,15 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                         warehouse_ref: selectedWarehouse,
                         warehouse_desc: selectedWarehouseData?.Description,
                         user_id: user.id,
-                        contact_ref: '',
-                        counterparty_ref: ''
+                        contact_ref: contact.Ref,
+                        counterparty_ref: counterparty.Ref
                     }
                 ]);
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                console.error('Error inserting client:', insertError);
+                throw insertError;
+            }
 
             setFirstName('');
             setLastName('');
