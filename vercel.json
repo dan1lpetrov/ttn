@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "my.ttn-one.vercel.app"
+        }
+      ],
+      "destination": "/my/$1"
+    }
+  ]
+} 

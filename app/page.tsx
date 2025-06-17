@@ -151,6 +151,36 @@ export default function Home() {
         }
     }, [user, supabase.auth]);
 
+    const handleGoogleSignIn = async () => {
+        console.log('Starting Google Sign-In process...');
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                    },
+                },
+            });
+
+            console.log('Sign in response:', { data, error });
+
+            if (error) {
+                console.error('Error during sign in:', error);
+                throw error;
+            }
+
+            if (data?.url) {
+                console.log('Redirecting to:', data.url);
+                window.location.href = data.url;
+            }
+        } catch (error) {
+            console.error('Error in handleGoogleSignIn:', error);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
