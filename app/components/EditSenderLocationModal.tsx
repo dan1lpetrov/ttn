@@ -26,7 +26,7 @@ interface EditSenderLocationModalProps {
 export default function EditSenderLocationModal({
     isOpen,
     onClose,
-    senderId,
+    senderRef,
     currentCityName,
     currentWarehouseName,
     onSuccess,
@@ -180,7 +180,7 @@ export default function EditSenderLocationModal({
                     sender_address_ref: selectedWarehouse,
                     sender_address_name: selectedWarehouseData?.Description || warehouseSearch,
                 })
-                .eq('id', senderId)
+                .eq('sender_ref', senderRef)
                 .eq('user_id', user.id);
 
             if (updateError) {
