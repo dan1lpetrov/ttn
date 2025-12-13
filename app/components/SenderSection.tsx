@@ -76,8 +76,18 @@ export default function SenderSection() {
             const sendersResponse = await fetch('/api/nova-poshta/counterparties?counterpartyProperty=Sender');
             const sendersData = await sendersResponse.json();
             
-            if (!sendersData.success || !sendersData.data || sendersData.data.length === 0) {
-                setError('Не знайдено відправників в Новій Пошті');
+            if (!sendersData.success) {
+                if (sendersResponse.status === 401 || sendersData.error?.includes('API key')) {
+                    setError('API_KEY_ERROR'); // Спеціальний маркер для помилки API ключа
+                } else {
+                    setError(sendersData.error || 'Не вдалося завантажити відправників з Нової Пошти');
+                }
+                setLoading(false);
+                return;
+            }
+            
+            if (!sendersData.data || sendersData.data.length === 0) {
+                setError('Не знайдено відправників в Новій Пошті. Перевірте правильність API ключа в профілі.');
                 setLoading(false);
                 return;
             }
@@ -335,6 +345,7 @@ export default function SenderSection() {
     }
 
     if (error) {
+        const isApiKeyError = error === 'API_KEY_ERROR';
         return (
             <div className="rounded-md bg-red-50 dark:bg-red-900 p-4">
                 <div className="flex">
@@ -343,8 +354,21 @@ export default function SenderSection() {
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{error}</h3>
+                    <div className="ml-3 flex-1">
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                            {isApiKeyError 
+                                ? 'API ключ не налаштовано або невалідний'
+                                : error
+                            }
+                        </h3>
+                        {isApiKeyError && (
+                            <a
+                                href="/profile"
+                                className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline font-medium"
+                            >
+                                Налаштувати API ключ в профілі →
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
@@ -361,6 +385,10 @@ export default function SenderSection() {
 
     return (
         <>
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Відправник</h2>
+            </div>
+
             {/* Інформація про відправника (з Нової Пошти) */}
             <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">

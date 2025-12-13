@@ -1,5 +1,7 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import ClientsList from '../components/ClientsList';
 import SenderSection from '../components/SenderSection';
 import CreateTTNForm from '../components/CreateTTNForm';
@@ -9,6 +11,24 @@ export default async function DashboardPage() {
   const supabase = createServerComponentClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
 
+  if (!session) {
+    redirect('/');
+  }
+
+  // Перевіряємо наявність API ключа
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('nova_poshta_api_key')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!settings || !settings.nova_poshta_api_key) {
+      redirect('/profile');
+    }
+  }
+
   return (
     <TTNProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -16,14 +36,12 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Сервіс створення ТТН</h1>
-            <form action="/auth/signout" method="post">
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-              >
-                Вийти
-              </button>
-            </form>
+            <Link
+              href="/profile"
+              className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+            >
+              Профіль
+            </Link>
           </div>
         </div>
       </header>

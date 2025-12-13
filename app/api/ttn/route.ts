@@ -1,9 +1,9 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getUserApiKey } from '@/lib/getUserApiKey';
 
 const NOVA_POSHTA_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
-const NOVA_POSHTA_API_KEY = process.env.NOVA_POSHTA_API_KEY;
 
 interface NovaPoshtaResponse {
     success: boolean;
@@ -56,9 +56,9 @@ async function getCityData(cityRef: string, cityName: string): Promise<{
     try {
         // Отримуємо дані про місто через getSettlements з Ref
         const request = {
-            modelName: 'Address',
+        modelName: 'Address',
             calledMethod: 'getSettlements',
-            methodProperties: {
+        methodProperties: {
                 Ref: cityRef,
                 Warehouse: '1', // Отримуємо дані для населеного пункту з відділеннями
             },
@@ -67,8 +67,8 @@ async function getCityData(cityRef: string, cityName: string): Promise<{
         console.log('Getting city data with getSettlements:', { cityRef, cityName });
 
         const response = await fetch(NOVA_POSHTA_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(request)
         });
 
@@ -165,16 +165,17 @@ async function getWarehouseIndex(warehouseRef: string, cityRef: string): Promise
 async function createCounterpartyAddress(
     counterpartyRef: string, 
     warehouseRef: string, 
-    warehouseName: string
+    warehouseName: string,
+    apiKey: string | null
 ): Promise<string> {
-    if (!NOVA_POSHTA_API_KEY) {
+    if (!apiKey) {
         console.warn('API key not set, using warehouse ref as address ref');
         return warehouseRef;
     }
 
     try {
         const request = {
-            apiKey: NOVA_POSHTA_API_KEY,
+            apiKey: apiKey,
             modelName: 'Address',
             calledMethod: 'save',
             methodProperties: {
@@ -216,13 +217,13 @@ async function createCounterpartyAddress(
  * Отримує Ref контрагента-відправника через API
  * Використовується, якщо контрагент вже створений вручну в особистому кабінеті Nova Poshta
  */
-async function getSenderCounterpartyRef(phone: string): Promise<string | null> {
-    if (!NOVA_POSHTA_API_KEY) {
+async function getSenderCounterpartyRef(phone: string, apiKey: string | null): Promise<string | null> {
+    if (!apiKey) {
         return null;
     }
 
     const request = {
-        apiKey: NOVA_POSHTA_API_KEY,
+        apiKey: apiKey,
         modelName: 'Counterparty',
         calledMethod: 'getCounterparties',
         methodProperties: {
@@ -255,7 +256,7 @@ async function getSenderCounterpartyRef(phone: string): Promise<string | null> {
     return null;
 }
 
-async function createNovaPoshtaTTN(client: Client, sender: Sender, description: string, cost: number) {
+async function createNovaPoshtaTTN(client: Client, sender: Sender, description: string, cost: number, apiKey: string) {
     console.log('Creating TTN for client:', { 
         id: client.id, 
         city_name: client.city_name, 
@@ -291,13 +292,15 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
     const senderAddressRef = await createCounterpartyAddress(
         sender.sender_ref,
         sender.sender_address_ref,
-        String(sender.sender_address_name || '')
+        String(sender.sender_address_name || ''),
+        apiKey
     );
-    
+
     const recipientAddressRef = await createCounterpartyAddress(
         client.counterparty_ref || client.contact_ref,
         recipientWarehouseRef,
-        client.warehouse_name || ''
+        client.warehouse_name || '',
+        apiKey
     );
 
     console.log('Using saved refs:', {
@@ -325,7 +328,7 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
 
     // Створюємо ТТН через InternetDocument (використовуємо вже створені контрагенти)
     const requestData = {
-        apiKey: NOVA_POSHTA_API_KEY,
+        apiKey: apiKey,
         modelName: 'InternetDocument',
         calledMethod: 'save',
         methodProperties: {
@@ -418,19 +421,20 @@ export async function POST(request: Request) {
 
         console.log('Creating TTN with:', { clientId, senderId, description, cost });
 
-        if (!NOVA_POSHTA_API_KEY) {
-            console.error('NOVA_POSHTA_API_KEY is not set');
-            return NextResponse.json(
-                { error: 'API key is not configured' },
-                { status: 500 }
-            );
-        }
-
         // Перевіряємо чи користувач авторизований
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
             return NextResponse.json(
                 { error: 'Необхідна авторизація' },
+                { status: 401 }
+            );
+        }
+
+        // Отримуємо API ключ користувача
+        const API_KEY = await getUserApiKey();
+        if (!API_KEY) {
+            return NextResponse.json(
+                { error: 'API key is not configured. Please set your API key in profile settings.' },
                 { status: 401 }
             );
         }
@@ -489,10 +493,10 @@ export async function POST(request: Request) {
         
         // Перевіряємо, чи це правильний Ref відправника (не Recipient)
         // Отримуємо список відправників через API
-        if (NOVA_POSHTA_API_KEY) {
+        if (API_KEY) {
             try {
                 const senderCheckRequest = {
-                    apiKey: NOVA_POSHTA_API_KEY,
+                    apiKey: API_KEY,
                     modelName: 'CounterpartyGeneral',
                     calledMethod: 'getCounterparties',
                     methodProperties: {
@@ -538,7 +542,7 @@ export async function POST(request: Request) {
 
         // Створюємо ТТН в Новій Пошті
         console.log('Creating TTN in Nova Poshta...');
-        const novaPoshtaTTN = await createNovaPoshtaTTN(client, sender, description, parseFloat(cost));
+        const novaPoshtaTTN = await createNovaPoshtaTTN(client, sender, description, parseFloat(cost), API_KEY);
         console.log('TTN created in Nova Poshta:', novaPoshtaTTN);
 
         // Зберігаємо ТТН в нашій БД
