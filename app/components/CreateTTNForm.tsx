@@ -13,6 +13,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
     const [cost, setCost] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
     const { selectedSenderId, selectedClientId } = useTTN();
     const supabase = createClientComponentClient();
 
@@ -20,6 +21,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccess(null);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -49,8 +51,18 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                 throw new Error(`${errorMessage}${errorDetails}`);
             }
 
+            const result = await response.json();
+            const ttnNumber = result.nova_poshta_number || result.int_doc_number || 'невідомий';
+            
             setDescription('');
             setCost('');
+            setSuccess(`ТТН успішно створена! Номер: ${ttnNumber}`);
+            
+            // Автоматично приховати повідомлення через 5 секунд
+            setTimeout(() => {
+                setSuccess(null);
+            }, 5000);
+            
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error creating TTN:', error);
@@ -62,16 +74,31 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {success && (
+                <div className="bg-green-50 dark:bg-green-900 p-4 rounded-md border border-green-200 dark:border-green-700">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-green-400 dark:text-green-300" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-green-800 dark:text-green-200">{success}</h3>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {error && (
                 <div className="bg-red-50 dark:bg-red-900 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <svg className="h-5 w-5 text-red-400 dark:text-red-300" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
                         </div>
                         <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                            <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{error}</h3>
                         </div>
                     </div>
                 </div>

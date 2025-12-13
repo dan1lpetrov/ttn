@@ -236,7 +236,7 @@ export default function EditSenderLocationModal({
                         )}
                     </div>
                     {showCityDropdown && cities.length > 0 && (
-                        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto focus:outline-none sm:text-sm">
+                        <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-[70vh] sm:max-h-60 overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                             {cities.map((city, index) => (
                                 <div
                                     key={`${city.Ref}-${index}`}
@@ -273,7 +273,7 @@ export default function EditSenderLocationModal({
                         )}
                     </div>
                     {showWarehouseDropdown && warehouses.length > 0 && (
-                        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto focus:outline-none sm:text-sm">
+                        <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-[70vh] sm:max-h-60 overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                             {warehouses.map((warehouse, index) => (
                                 <div
                                     key={`${warehouse.Ref}-${index}`}

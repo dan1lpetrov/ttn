@@ -343,22 +343,22 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
-                            <div className="bg-red-50 p-4 rounded-md">
+                            <div className="bg-red-50 dark:bg-red-900 p-4 rounded-md">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg className="h-5 w-5 text-red-400 dark:text-red-300" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                         </svg>
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{error}</h3>
                                     </div>
                                 </div>
                             </div>
                         )}
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             <div>
-                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                     Ім&apos;я
                                 </label>
                                 <input
@@ -369,11 +369,11 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                     required
                                     pattern="[\u0400-\u04FF\s]+"
                                     title="Введіть тільки українські літери"
-                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                                    className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                     Прізвище
                                 </label>
                                 <input
@@ -384,12 +384,12 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                     required
                                     pattern="[\u0400-\u04FF\s]+"
                                     title="Введіть тільки українські літери"
-                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                                    className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                 Телефон
                             </label>
                             <input
@@ -399,11 +399,11 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                 onChange={handlePhoneChange}
                                 required
                                 placeholder="+380XXXXXXXXX"
-                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                             />
                         </div>
                         <div className="relative" ref={cityDropdownRef}>
-                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                 Місто
                             </label>
                             <div className="relative">
@@ -414,23 +414,23 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                     onChange={handleCityInputChange}
                                     required
                                     placeholder="Введіть мінімум 2 літери для пошуку"
-                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                                    className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                                 {isCityLoading && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 dark:border-blue-400"></div>
                                     </div>
                                 )}
                             </div>
                             {cityError && (
-                                <p className="mt-2 text-sm text-red-600">{cityError}</p>
+                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{cityError}</p>
                             )}
                             {showCityDropdown && cities.length > 0 && (
-                                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                                <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                                     {cities.map((city, index) => (
                                         <div
                                             key={`${city.Ref}-${index}`}
-                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
                                             onClick={() => handleCitySelect(city)}
                                         >
                                             <span className="block truncate">{city.Description}</span>
@@ -440,7 +440,7 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                             )}
                         </div>
                         <div className="relative" ref={warehouseDropdownRef}>
-                            <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                 Відділення
                             </label>
                             <div className="relative">
@@ -453,23 +453,23 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                     required
                                     disabled={!selectedCity}
                                     placeholder={selectedCity ? "Введіть назву відділення" : "Спочатку виберіть місто"}
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 disabled:bg-gray-100"
+                                    className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                                 />
                                 {isWarehouseLoading && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 dark:border-blue-400"></div>
                                     </div>
                                 )}
                             </div>
                             {warehouseError && (
-                                <p className="mt-2 text-sm text-red-600">{warehouseError}</p>
+                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{warehouseError}</p>
                             )}
                             {showWarehouseDropdown && warehouses.length > 0 && (
-                                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                                <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                                     {warehouses.map((warehouse, index) => (
                                         <div
                                             key={`${warehouse.Ref}-${index}`}
-                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
                                             onClick={() => handleWarehouseSelect(warehouse)}
                                         >
                                             <span className="block truncate">{warehouse.Description}</span>
@@ -478,12 +478,12 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                 </div>
                             )}
                         </div>
-                        <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                        <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             {onCancel && (
                                 <button
                                     type="button"
                                     onClick={onCancel}
-                                    className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                                    className="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Скасувати
                                 </button>
@@ -493,8 +493,8 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                 disabled={loading}
                                 className={`${onCancel ? 'flex-1' : 'w-full'} py-2 px-3 rounded-lg transition-colors ${
                                     loading
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
                                 }`}
                             >
                                 {loading ? (

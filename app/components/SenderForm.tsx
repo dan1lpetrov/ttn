@@ -456,7 +456,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                             Виберіть відправника
                         </label>
                         <div className="relative">
-                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200">
+                            <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                                 {existingSenders.map((sender, index) => (
                                     <div
                                         key={`${sender.Ref}-${index}`}
@@ -495,7 +495,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                                         }
                                     </button>
                                     {showContactPersonsDropdown && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200">
+                                        <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                                             {contactPersons.map((person, index) => (
                                                 <div
                                                     key={`${person.Ref}-${index}`}
@@ -559,11 +559,11 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                     <p className="mt-2 text-sm text-red-600">{cityError}</p>
                 )}
                 {showCityDropdown && cities.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                    <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                         {cities.map((city, index) => (
                             <div
                                 key={`${city.Ref}-${index}`}
-                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
                                 onClick={() => handleCitySelect(city)}
                             >
                                 <span className="block truncate">{city.Description}</span>
@@ -599,11 +599,11 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                     <p className="mt-2 text-sm text-red-600">{warehouseError}</p>
                 )}
                 {showWarehouseDropdown && warehouses.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                    <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
                         {warehouses.map((warehouse, index) => (
                             <div
                                 key={`${warehouse.Ref}-${index}`}
-                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
                                 onClick={() => handleWarehouseSelect(warehouse)}
                             >
                                 <span className="block truncate">{warehouse.Description}</span>
