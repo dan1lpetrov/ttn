@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import Modal from './Modal';
 import AddClientForm from './AddClientForm';
 import { useTTN } from '../contexts/TTNContext';
 
@@ -20,7 +19,7 @@ export default function ClientsList() {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [addingClient, setAddingClient] = useState(false);
     const { selectedClientId, setSelectedClientId } = useTTN();
     const supabase = createClientComponentClient();
 
@@ -82,12 +81,40 @@ export default function ClientsList() {
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Клієнти</h3>
                 <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => setAddingClient(!addingClient)}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                 >
-                    + Додати
+                    {addingClient ? 'Скасувати' : '+ Додати'}
                 </button>
             </div>
+
+            {/* Форма додавання клієнта */}
+            {addingClient && (
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <AddClientForm
+                        onSuccess={async () => {
+                            setAddingClient(false);
+                            await fetchClients();
+                            // Після оновлення списку, вибираємо останнього доданого клієнта
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                                const { data: latestClient } = await supabase
+                                    .from('clients')
+                                    .select('id')
+                                    .eq('user_id', user.id)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .single();
+                                if (latestClient) {
+                                    setSelectedClientId(latestClient.id);
+                                }
+                            }
+                        }}
+                        onCancel={() => setAddingClient(false)}
+                    />
+                </div>
+            )}
+
             {clients.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <p>Немає клієнтів</p>
@@ -116,34 +143,6 @@ export default function ClientsList() {
                     ))}
                 </div>
             )}
-
-            <Modal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                title="Додати клієнта"
-            >
-                <AddClientForm
-                    onSuccess={async () => {
-                        setShowAddModal(false);
-                        await fetchClients();
-                        // Після оновлення списку, вибираємо останнього доданого клієнта
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (user) {
-                            const { data: latestClient } = await supabase
-                                .from('clients')
-                                .select('id')
-                                .eq('user_id', user.id)
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .single();
-                            if (latestClient) {
-                                setSelectedClientId(latestClient.id);
-                            }
-                        }
-                    }}
-                    onCancel={() => setShowAddModal(false)}
-                />
-            </Modal>
         </>
     );
 }

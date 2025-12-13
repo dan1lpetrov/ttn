@@ -155,8 +155,22 @@ export default function EditSenderLocationModal({
         // Прокручуємо інпут до верху екрана на мобільних пристроях
         if (warehouseInputRef.current && window.innerWidth < 640) {
             setTimeout(() => {
-                warehouseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+                const input = warehouseInputRef.current;
+                if (input) {
+                    // Знаходимо модальне вікно
+                    const modal = input.closest('[role="dialog"], .fixed');
+                    if (modal) {
+                        // Прокручуємо модалку так, щоб інпут був вгорі
+                        const inputTop = input.getBoundingClientRect().top;
+                        const modalTop = (modal as HTMLElement).getBoundingClientRect().top;
+                        const scrollOffset = inputTop - modalTop - 10; // 10px відступ зверху
+                        (modal as HTMLElement).scrollTop = (modal as HTMLElement).scrollTop + scrollOffset;
+                    } else {
+                        // Якщо не знайшли модалку, використовуємо стандартну прокрутку
+                        input.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+                    }
+                }
+            }, 300); // Збільшуємо затримку, щоб клавіатура встигла відкритись
         }
     };
 

@@ -42,12 +42,12 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-screen items-center justify-center p-2 sm:p-4 text-center">
+            <div className="flex min-h-screen items-start sm:items-center justify-center p-0 sm:p-4 text-center">
                 <div className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" />
 
                 <div
                     ref={modalRef}
-                    className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all w-[95vw] max-w-[95vw] max-h-[90vh] overflow-y-auto sm:my-8 sm:w-full sm:max-w-lg sm:max-h-none sm:p-6"
+                    className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-3 pb-3 pt-4 text-left shadow-xl transition-all w-full h-full max-h-[100dvh] overflow-y-auto sm:my-8 sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg sm:px-6 sm:pb-6 sm:pt-5"
                 >
                     <div className="absolute right-0 top-0 pr-4 pt-4">
                         <button

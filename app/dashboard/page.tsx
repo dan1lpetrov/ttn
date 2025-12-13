@@ -32,15 +32,11 @@ export default async function DashboardPage() {
         <div className="space-y-6 pb-20">
           {/* Секція відправників */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-            <h2 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Відправник</h2>
             <SenderSection />
           </div>
 
           {/* Секція клієнтів */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Клієнти</h2>
-            </div>
             <ClientsList />
           </div>
 

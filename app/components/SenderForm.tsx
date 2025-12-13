@@ -309,8 +309,22 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
         // Прокручуємо інпут до верху екрана на мобільних пристроях
         if (warehouseInputRef.current && window.innerWidth < 640) {
             setTimeout(() => {
-                warehouseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+                const input = warehouseInputRef.current;
+                if (input) {
+                    // Знаходимо модальне вікно
+                    const modal = input.closest('[role="dialog"], .fixed');
+                    if (modal) {
+                        // Прокручуємо модалку так, щоб інпут був вгорі
+                        const inputTop = input.getBoundingClientRect().top;
+                        const modalTop = (modal as HTMLElement).getBoundingClientRect().top;
+                        const scrollOffset = inputTop - modalTop - 10; // 10px відступ зверху
+                        (modal as HTMLElement).scrollTop = (modal as HTMLElement).scrollTop + scrollOffset;
+                    } else {
+                        // Якщо не знайшли модалку, використовуємо стандартну прокрутку
+                        input.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+                    }
+                }
+            }, 300); // Збільшуємо затримку, щоб клавіатура встигла відкритись
         }
     };
 
@@ -405,10 +419,10 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                             sender_address_ref: senderAddressRef,
                             sender_address_name: senderAddressName,
                             contact_sender_ref: selectedContactPerson.Ref
-                        }
-                    ]);
+                    }
+                ]);
 
-                if (insertError) {
+            if (insertError) {
                     console.error('Error inserting sender:', insertError);
                     throw insertError;
                 }
@@ -436,15 +450,15 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div className="bg-red-50 p-4 rounded-md">
+                <div className="bg-red-50 dark:bg-red-900 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <svg className="h-5 w-5 text-red-400 dark:text-red-300" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
                         </div>
                         <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                            <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{error}</h3>
                         </div>
                     </div>
                 </div>
@@ -454,12 +468,12 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
             <div className="relative" ref={existingSendersDropdownRef}>
                 {(isLoadingExistingSenders || isLoadingContactPerson) && (
                     <div className="mb-2">
-                        <p className="text-sm text-gray-600">Завантаження відправника...</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Завантаження відправника...</p>
                     </div>
                 )}
                 {!isLoadingExistingSenders && !isLoadingContactPerson && !selectedExistingSender && existingSenders.length > 1 && showExistingSendersDropdown && (
                     <div className="mb-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                             Виберіть відправника
                         </label>
                         <div className="relative">
@@ -487,14 +501,14 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                         {/* Випадаючий список контактних осіб */}
                         {contactPersons.length > 1 && (
                             <div className="mb-4 relative" ref={contactPersonsDropdownRef}>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                                     Контактна особа
                                 </label>
                                 <div className="relative">
                                     <button
                                         type="button"
                                         onClick={() => setShowContactPersonsDropdown(!showContactPersonsDropdown)}
-                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 text-left bg-white"
+                                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 text-left bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                     >
                                         {selectedContactPerson 
                                             ? `${selectedContactPerson.LastName} ${selectedContactPerson.FirstName}`.trim() || selectedContactPerson.Description
@@ -506,7 +520,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                                             {contactPersons.map((person, index) => (
                                                 <div
                                                     key={`${person.Ref}-${index}`}
-                                                    className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                                    className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
                                                     onClick={() => handleSelectContactPerson(person)}
                                                 >
                                                     <span className="block truncate font-medium">
@@ -526,8 +540,8 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                         )}
 
                         {/* Відображення обраної контактної особи та телефону */}
-                        <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-                            <p className="text-sm text-gray-700">
+                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-md border border-blue-200 dark:border-blue-700">
+                            <p className="text-sm text-gray-700 dark:text-gray-200">
                                 <strong>Відправник:</strong>{' '}
                                 {selectedContactPerson 
                                     ? `${selectedContactPerson.LastName} ${selectedContactPerson.FirstName}`.trim() || selectedContactPerson.Description
@@ -535,7 +549,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                                 }
                             </p>
                             {selectedContactPerson?.Phones && (
-                                <p className="text-xs text-gray-600 mt-1">Телефон: {selectedContactPerson.Phones}</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Телефон: {selectedContactPerson.Phones}</p>
                             )}
                         </div>
                     </>
@@ -543,7 +557,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
             </div>
 
             <div className="relative" ref={cityDropdownRef}>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Місто
                 </label>
                 <div className="relative">
@@ -554,7 +568,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                         onChange={handleCityInputChange}
                         required
                         placeholder="Введіть мінімум 2 літери для пошуку"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     {isCityLoading && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -563,7 +577,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                     )}
                 </div>
                 {cityError && (
-                    <p className="mt-2 text-sm text-red-600">{cityError}</p>
+                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{cityError}</p>
                 )}
                 {showCityDropdown && cities.length > 0 && (
                     <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
@@ -581,7 +595,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
             </div>
 
             <div className="relative" ref={warehouseDropdownRef}>
-                <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Відділення
                 </label>
                 <div className="relative">
@@ -595,7 +609,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                         required
                         disabled={!selectedCity}
                         placeholder={selectedCity ? "Введіть назву відділення" : "Спочатку виберіть місто"}
-                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 ${!selectedCity ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+                        className={`block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 ${!selectedCity ? 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'}`}
                     />
                     {isWarehouseLoading && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -604,7 +618,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                     )}
                 </div>
                 {warehouseError && (
-                    <p className="mt-2 text-sm text-red-600">{warehouseError}</p>
+                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{warehouseError}</p>
                 )}
                 {showWarehouseDropdown && warehouses.length > 0 && (
                     <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-600" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
@@ -626,7 +640,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                         Скасувати
                     </button>
@@ -634,7 +648,7 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 border border-transparent rounded-md shadow-sm hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                     {loading ? 'Збереження...' : 'Зберегти'}
                 </button>
