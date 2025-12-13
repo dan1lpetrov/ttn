@@ -44,18 +44,10 @@ export default function Home() {
                 provider: 'google',
                 options: {
                     redirectTo: redirectUrl,
-                    // Явно вказуємо site_url, щоб Supabase не використовував налаштування з Dashboard
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',
                     },
-                    // Додаємо site_url в опції, щоб Supabase використовував правильний URL
-                    ...(currentOrigin && { 
-                        queryParams: {
-                            ...{ access_type: 'offline', prompt: 'consent' },
-                            // Передаємо site_url через queryParams, якщо Supabase підтримує
-                        }
-                    }),
                 },
             });
 
