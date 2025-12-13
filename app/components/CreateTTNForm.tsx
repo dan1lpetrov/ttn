@@ -13,7 +13,8 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
     const [cost, setCost] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [ttnNumber, setTtnNumber] = useState<string | null>(null);
     const { selectedSenderId, selectedClientId } = useTTN();
     const supabase = createClientComponentClient();
 
@@ -21,7 +22,8 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
         e.preventDefault();
         setLoading(true);
         setError(null);
-        setSuccess(null);
+        setSuccessMessage(null);
+        setTtnNumber(null);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -52,16 +54,12 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
             }
 
             const result = await response.json();
-            const ttnNumber = result.nova_poshta_number || result.int_doc_number || 'невідомий';
+            const newTtnNumber = result.nova_poshta_number || result.int_doc_number || null;
             
             setDescription('');
             setCost('');
-            setSuccess(`ТТН успішно створена! Номер: ${ttnNumber}`);
-            
-            // Автоматично приховати повідомлення через 5 секунд
-            setTimeout(() => {
-                setSuccess(null);
-            }, 5000);
+            setSuccessMessage('ТТН успішно створена!');
+            setTtnNumber(newTtnNumber);
             
             if (onSuccess) onSuccess();
         } catch (error) {
@@ -74,7 +72,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            {success && (
+            {successMessage && (
                 <div className="bg-green-50 dark:bg-green-900 p-4 rounded-md border border-green-200 dark:border-green-700">
                     <div className="flex">
                         <div className="flex-shrink-0">
@@ -83,7 +81,22 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                             </svg>
                         </div>
                         <div className="ml-3">
-                            <h3 className="text-sm font-medium text-green-800 dark:text-green-200">{success}</h3>
+                            <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                                {successMessage}
+                                {ttnNumber && (
+                                    <span className="ml-2">
+                                        Номер:{' '}
+                                        <a
+                                            href={`https://novaposhta.ua/tracking/${ttnNumber}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 underline font-semibold"
+                                        >
+                                            {ttnNumber}
+                                        </a>
+                                    </span>
+                                )}
+                            </h3>
                         </div>
                     </div>
                 </div>
