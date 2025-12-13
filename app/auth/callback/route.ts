@@ -23,14 +23,14 @@ export async function GET(request: Request) {
 
         if (error) {
             console.error('Error exchanging code:', error);
-            return NextResponse.redirect(new URL('/', request.url));
+            return NextResponse.redirect(new URL('/', requestUrl.origin));
         }
 
         // URL to redirect to after sign in process completes
-        const redirectUrl = new URL('/dashboard', request.url);
+        const redirectUrl = new URL('/dashboard', requestUrl.origin);
         console.log('Redirecting to:', redirectUrl.toString());
         return NextResponse.redirect(redirectUrl);
     }
 
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/', requestUrl.origin));
 } 

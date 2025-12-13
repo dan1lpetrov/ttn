@@ -32,10 +32,14 @@ export default function Home() {
     const handleGoogleSignIn = async () => {
         console.log('Starting Google Sign-In process...');
         try {
+            // Визначаємо правильний URL для редиректу
+            // На клієнті використовуємо window.location.origin, який автоматично визначить правильний домен
+            const redirectUrl = `${window.location.origin}/auth/callback`;
+            
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: redirectUrl,
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',
