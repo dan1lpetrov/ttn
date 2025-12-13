@@ -1,198 +1,407 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+interface City {
+    Ref: string;
+    Description: string;
+}
+
+interface Warehouse {
+    Ref: string;
+    Description: string;
+}
 
 interface SenderFormProps {
     onSuccess?: () => void;
     onCancel?: () => void;
 }
 
-export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [cityRef, setCityRef] = useState('');
-    const [cityName, setCityName] = useState('');
-    const [senderRef, setSenderRef] = useState('');
-    const [senderAddressRef, setSenderAddressRef] = useState('');
-    const [senderAddressName, setSenderAddressName] = useState('');
-    const [contactSenderRef, setContactSenderRef] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+interface ExistingSender {
+    Ref: string;
+    Description: string;
+    FirstName?: string;
+    LastName?: string;
+    Phones?: string[];
+    [key: string]: any;
+}
 
+export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
+    const [phone, setPhone] = useState('');
+    const [cities, setCities] = useState<City[]>([]);
+    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const [selectedCity, setSelectedCity] = useState('');
+    const [selectedWarehouse, setSelectedWarehouse] = useState('');
+    const [citySearch, setCitySearch] = useState('');
+    const [warehouseSearch, setWarehouseSearch] = useState('');
+    const [showCityDropdown, setShowCityDropdown] = useState(false);
+    const [showWarehouseDropdown, setShowWarehouseDropdown] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isCityLoading, setIsCityLoading] = useState(false);
+    const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
+    const [cityError, setCityError] = useState<string | null>(null);
+    const [warehouseError, setWarehouseError] = useState<string | null>(null);
+    
+    // Стан для вибору існуючого відправника
+    const [existingSenders, setExistingSenders] = useState<ExistingSender[]>([]);
+    const [selectedExistingSender, setSelectedExistingSender] = useState<ExistingSender | null>(null);
+    const [showExistingSendersDropdown, setShowExistingSendersDropdown] = useState(false);
+    const [isLoadingExistingSenders, setIsLoadingExistingSenders] = useState(false);
+    const [isLoadingContactPerson, setIsLoadingContactPerson] = useState(false);
+    
+    // Стан для контактних осіб
+    const [contactPersons, setContactPersons] = useState<Array<{
+        Ref: string;
+        FirstName: string;
+        LastName: string;
+        Phones: string;
+        Description: string;
+    }>>([]);
+    const [selectedContactPerson, setSelectedContactPerson] = useState<{
+        Ref: string;
+        FirstName: string;
+        LastName: string;
+        Phones: string;
+        Description: string;
+    } | null>(null);
+    const [showContactPersonsDropdown, setShowContactPersonsDropdown] = useState(false);
+    
+    const cityDropdownRef = useRef<HTMLDivElement>(null);
+    const warehouseDropdownRef = useRef<HTMLDivElement>(null);
+    const existingSendersDropdownRef = useRef<HTMLDivElement>(null);
+    const contactPersonsDropdownRef = useRef<HTMLDivElement>(null);
     const supabase = createClientComponentClient();
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+                setShowCityDropdown(false);
+            }
+            if (warehouseDropdownRef.current && !warehouseDropdownRef.current.contains(event.target as Node)) {
+                setShowWarehouseDropdown(false);
+            }
+            if (existingSendersDropdownRef.current && !existingSendersDropdownRef.current.contains(event.target as Node)) {
+                setShowExistingSendersDropdown(false);
+            }
+            if (contactPersonsDropdownRef.current && !contactPersonsDropdownRef.current.contains(event.target as Node)) {
+                setShowContactPersonsDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Функція для завантаження даних контактної особи та встановлення відправника
+    const loadContactPersonAndSetSender = async (sender: ExistingSender) => {
+        setIsLoadingContactPerson(true);
+        try {
+            // Отримуємо контактні особи для цього відправника
+            const contactPersonsResponse = await fetch(`/api/nova-poshta/counterparty-contact-persons?ref=${sender.Ref}`);
+            const contactPersonsData = await contactPersonsResponse.json();
+            
+            if (contactPersonsData.success && contactPersonsData.data && contactPersonsData.data.length > 0) {
+                const persons = contactPersonsData.data.map((person: any) => ({
+                    Ref: person.Ref,
+                    FirstName: person.FirstName || '',
+                    LastName: person.LastName || '',
+                    Phones: typeof person.Phones === 'string' 
+                        ? person.Phones 
+                        : (Array.isArray(person.Phones) ? person.Phones[0] : ''),
+                    Description: person.Description || `${person.LastName || ''} ${person.FirstName || ''}`.trim()
+                }));
+                
+                setContactPersons(persons);
+                
+                // Якщо є тільки одна контактна особа, автоматично її вибираємо
+                if (persons.length === 1) {
+                    setSelectedContactPerson(persons[0]);
+                    setPhone(persons[0].Phones);
+                } else if (persons.length > 1) {
+                    // Якщо є кілька, вибираємо першу за замовчуванням, але показуємо список
+                    setSelectedContactPerson(persons[0]);
+                    setPhone(persons[0].Phones);
+                    setShowContactPersonsDropdown(true);
+                }
+            } else {
+                // Якщо немає контактних осіб, створюємо фейкову з даних відправника
+                const fakePerson = {
+                    Ref: sender.Ref,
+                    FirstName: sender.FirstName || '',
+                    LastName: sender.LastName || '',
+                    Phones: typeof sender.Phones === 'string' 
+                        ? sender.Phones 
+                        : (Array.isArray(sender.Phones) ? sender.Phones[0] : ''),
+                    Description: sender.Description || `${sender.LastName || ''} ${sender.FirstName || ''}`.trim()
+                };
+                setContactPersons([fakePerson]);
+                setSelectedContactPerson(fakePerson);
+                setPhone(fakePerson.Phones);
+            }
+            
+            setSelectedExistingSender(sender);
+        } catch (err) {
+            console.error('Error fetching contact persons:', err);
+            // Якщо помилка, створюємо фейкову з даних відправника
+            const fakePerson = {
+                Ref: sender.Ref,
+                FirstName: sender.FirstName || '',
+                LastName: sender.LastName || '',
+                Phones: typeof sender.Phones === 'string' 
+                    ? sender.Phones 
+                    : (Array.isArray(sender.Phones) ? sender.Phones[0] : ''),
+                Description: sender.Description || `${sender.LastName || ''} ${sender.FirstName || ''}`.trim()
+            };
+            setContactPersons([fakePerson]);
+            setSelectedContactPerson(fakePerson);
+            setPhone(fakePerson.Phones);
+            setSelectedExistingSender(sender);
+        } finally {
+            setIsLoadingContactPerson(false);
+        }
+    };
+
+    // Автоматично завантажуємо список відправників при відкритті форми
+    useEffect(() => {
+        const loadSenders = async () => {
+            setIsLoadingExistingSenders(true);
+            try {
+                const response = await fetch('/api/nova-poshta/counterparties?counterpartyProperty=Sender');
+                const data = await response.json();
+                if (data.success) {
+                    const senders = data.data || [];
+                    setExistingSenders(senders);
+                    
+                    // Якщо є тільки один відправник, автоматично його вибираємо
+                    if (senders.length === 1) {
+                        await loadContactPersonAndSetSender(senders[0]);
+                    } else if (senders.length > 1) {
+                        setShowExistingSendersDropdown(true);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching existing senders:', err);
+            } finally {
+                setIsLoadingExistingSenders(false);
+            }
+        };
+        
+        loadSenders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSelectExistingSender = async (sender: ExistingSender) => {
+        setShowExistingSendersDropdown(false);
+        await loadContactPersonAndSetSender(sender);
+    };
+
+    const handleSelectContactPerson = (person: typeof contactPersons[0]) => {
+        setSelectedContactPerson(person);
+        setPhone(person.Phones);
+        setShowContactPersonsDropdown(false);
+    };
+
+    const fetchCities = async (search: string) => {
+        if (search.length < 2) {
+            setShowCityDropdown(false);
+            return;
+        }
+
+        setIsCityLoading(true);
+        setCityError(null);
+
+        try {
+            const response = await fetch(`/api/nova-poshta/cities?search=${encodeURIComponent(search)}`);
+            if (!response.ok) {
+                throw new Error('Помилка при пошуку міст');
+            }
+            const data = await response.json();
+            if (data.success) {
+                const uniqueCities = data.data.filter((city: City, index: number, self: City[]) => 
+                    index === self.findIndex((c: City) => c.Ref === city.Ref)
+                );
+                setCities(uniqueCities);
+                setShowCityDropdown(true);
+            } else {
+                throw new Error(data.error || 'Помилка при пошуку міст');
+            }
+        } catch (err) {
+            console.error('Error fetching cities:', err);
+            setCityError('Помилка при пошуку міст. Спробуйте ще раз.');
+            setShowCityDropdown(false);
+        } finally {
+            setIsCityLoading(false);
+        }
+    };
+
+    const fetchWarehouses = async (search: string) => {
+        if (!selectedCity) return;
+
+        setIsWarehouseLoading(true);
+        setWarehouseError(null);
+
+        try {
+            const response = await fetch(`/api/nova-poshta/warehouses?cityRef=${selectedCity}&search=${encodeURIComponent(search)}`);
+            if (!response.ok) {
+                throw new Error('Помилка при пошуку відділень');
+            }
+            const data = await response.json();
+            if (data.success) {
+                const uniqueWarehouses = data.data.filter((warehouse: Warehouse, index: number, self: Warehouse[]) => 
+                    index === self.findIndex((w: Warehouse) => w.Ref === warehouse.Ref)
+                );
+                setWarehouses(uniqueWarehouses);
+                setShowWarehouseDropdown(true);
+            } else {
+                throw new Error(data.error || 'Помилка при пошуку відділень');
+            }
+        } catch (err) {
+            console.error('Error fetching warehouses:', err);
+            setWarehouseError('Помилка при пошуку відділень. Спробуйте ще раз.');
+            setShowWarehouseDropdown(false);
+        } finally {
+            setIsWarehouseLoading(false);
+        }
+    };
+
+    const handleCitySelect = (city: City) => {
+        setSelectedCity(city.Ref);
+        setCitySearch(city.Description);
+        setShowCityDropdown(false);
+        setWarehouseSearch('');
+        setSelectedWarehouse('');
+        fetchWarehouses('');
+    };
+
+    const handleWarehouseSelect = (warehouse: Warehouse) => {
+        setSelectedWarehouse(warehouse.Ref);
+        setWarehouseSearch(warehouse.Description);
+        setShowWarehouseDropdown(false);
+    };
+
+    const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setCitySearch(value);
+        if (value.length >= 2) {
+            const timeoutId = setTimeout(() => fetchCities(value), 300);
+            return () => clearTimeout(timeoutId);
+        } else {
+            setShowCityDropdown(false);
+        }
+    };
+
+    const handleWarehouseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setWarehouseSearch(value);
+        if (selectedCity) {
+            const timeoutId = setTimeout(() => fetchWarehouses(value), 300);
+            return () => clearTimeout(timeoutId);
+        }
+    };
+
+    const handleWarehouseInputFocus = () => {
+        if (selectedCity) {
+            fetchWarehouses(warehouseSearch);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
-        setSuccess(null);
         setLoading(true);
+        setError(null);
 
         try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                throw new Error('Необхідна авторизація');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            if (!selectedExistingSender) {
+                throw new Error('Виберіть відправника');
             }
+
+            if (!selectedContactPerson) {
+                throw new Error('Виберіть контактну особу');
+            }
+
+            // Перевіряємо, чи вибрано місто та відділення
+            if (!selectedCity) {
+                throw new Error('Виберіть місто відправки');
+            }
+            
+            const selectedCityData = cities.find(city => city.Ref === selectedCity);
+            if (!selectedCityData) {
+                throw new Error('Місто не знайдено');
+            }
+
+            if (!selectedWarehouse) {
+                throw new Error('Виберіть відділення відправки');
+            }
+
+            const selectedWarehouseData = warehouses.find(warehouse => warehouse.Ref === selectedWarehouse);
+            if (!selectedWarehouseData) {
+                throw new Error('Відділення не знайдено');
+            }
+
+            const senderName = `${selectedContactPerson.LastName} ${selectedContactPerson.FirstName}`.trim() || selectedExistingSender.Description;
+            const senderPhone = selectedContactPerson.Phones || '';
+
+            const cityRef = selectedCity;
+            const senderAddressRef = selectedWarehouse;
+            const senderAddressName = selectedWarehouseData.Description;
+
+            console.log('Using existing sender:', {
+                sender_ref: selectedExistingSender.Ref,
+                contact_sender_ref: selectedContactPerson.Ref,
+                city_ref: cityRef,
+                sender_address_ref: senderAddressRef
+            });
 
             const { error: insertError } = await supabase
                 .from('sender')
                 .insert([
                     {
                         user_id: user.id,
-                        name,
-                        phone,
+                        name: senderName,
+                        phone: senderPhone,
                         city_ref: cityRef,
-                        city_name: cityName,
-                        sender_ref: senderRef,
+                        city_name: selectedCityData.Description,
+                        sender_ref: selectedExistingSender.Ref,
                         sender_address_ref: senderAddressRef,
                         sender_address_name: senderAddressName,
-                        contact_sender_ref: contactSenderRef
+                        contact_sender_ref: selectedContactPerson.Ref
                     }
                 ]);
 
             if (insertError) {
-                throw new Error(insertError.message);
+                console.error('Error inserting sender:', insertError);
+                throw insertError;
             }
 
-            setSuccess('Відправника успішно додано');
-            setName('');
+            // Очищаємо форму
+            setCitySearch('');
+            setWarehouseSearch('');
+            setSelectedCity('');
+            setSelectedWarehouse('');
+            setSelectedExistingSender(null);
+            setSelectedContactPerson(null);
+            setContactPersons([]);
             setPhone('');
-            setCityRef('');
-            setCityName('');
-            setSenderRef('');
-            setSenderAddressRef('');
-            setSenderAddressName('');
-            setContactSenderRef('');
             
-            if (onSuccess) {
-                onSuccess();
-            }
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Помилка при додаванні відправника');
+            if (onSuccess) onSuccess();
+        } catch (err) {
+            console.error('Error adding sender:', err);
+            setError(err instanceof Error ? err.message : 'Помилка при додаванні відправника');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Додати відправника</h2>
-            
-            <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Назва відправника
-                </label>
-                <input
-                    type="text"
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Телефон
-                </label>
-                <input
-                    type="tel"
-                    id="phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="cityRef" className="block text-sm font-medium text-gray-700">
-                    Реф міста
-                </label>
-                <input
-                    type="text"
-                    id="cityRef"
-                    value={cityRef}
-                    onChange={(e) => setCityRef(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="cityName" className="block text-sm font-medium text-gray-700">
-                    Назва міста
-                </label>
-                <input
-                    type="text"
-                    id="cityName"
-                    value={cityName}
-                    onChange={(e) => setCityName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="senderRef" className="block text-sm font-medium text-gray-700">
-                    Реф відправника
-                </label>
-                <input
-                    type="text"
-                    id="senderRef"
-                    value={senderRef}
-                    onChange={(e) => setSenderRef(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="senderAddressRef" className="block text-sm font-medium text-gray-700">
-                    Реф адреси відправника
-                </label>
-                <input
-                    type="text"
-                    id="senderAddressRef"
-                    value={senderAddressRef}
-                    onChange={(e) => setSenderAddressRef(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="senderAddressName" className="block text-sm font-medium text-gray-700">
-                    Назва адреси відправника
-                </label>
-                <input
-                    type="text"
-                    id="senderAddressName"
-                    value={senderAddressName}
-                    onChange={(e) => setSenderAddressName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
-            <div>
-                <label htmlFor="contactSenderRef" className="block text-sm font-medium text-gray-700">
-                    Реф контактної особи
-                </label>
-                <input
-                    type="text"
-                    id="contactSenderRef"
-                    value={contactSenderRef}
-                    onChange={(e) => setContactSenderRef(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                />
-            </div>
-
+        <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div className="rounded-md bg-red-50 p-4">
+                <div className="bg-red-50 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
                             <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -206,20 +415,192 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                 </div>
             )}
 
-            {success && (
-                <div className="rounded-md bg-green-50 p-4">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <h3 className="text-sm font-medium text-green-800">{success}</h3>
+            {/* Вибір існуючого відправника */}
+            <div className="relative" ref={existingSendersDropdownRef}>
+                {(isLoadingExistingSenders || isLoadingContactPerson) && (
+                    <div className="mb-2">
+                        <p className="text-sm text-gray-600">Завантаження відправника...</p>
+                    </div>
+                )}
+                {!isLoadingExistingSenders && !isLoadingContactPerson && !selectedExistingSender && existingSenders.length > 1 && showExistingSendersDropdown && (
+                    <div className="mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Виберіть відправника
+                        </label>
+                        <div className="relative">
+                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200">
+                                {existingSenders.map((sender, index) => (
+                                    <div
+                                        key={`${sender.Ref}-${index}`}
+                                        className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                        onClick={() => handleSelectExistingSender(sender)}
+                                    >
+                                        <span className="block truncate font-medium">{sender.Description}</span>
+                                        {sender.Phones && (typeof sender.Phones === 'string' || (Array.isArray(sender.Phones) && sender.Phones.length > 0)) && (
+                                            <span className="block text-xs text-gray-500 mt-1">
+                                                {typeof sender.Phones === 'string' ? sender.Phones : sender.Phones[0]}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
+                )}
+                {!isLoadingContactPerson && selectedExistingSender && (
+                    <>
+                        {/* Випадаючий список контактних осіб */}
+                        {contactPersons.length > 1 && (
+                            <div className="mb-4 relative" ref={contactPersonsDropdownRef}>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Контактна особа
+                                </label>
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowContactPersonsDropdown(!showContactPersonsDropdown)}
+                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 text-left bg-white"
+                                    >
+                                        {selectedContactPerson 
+                                            ? `${selectedContactPerson.LastName} ${selectedContactPerson.FirstName}`.trim() || selectedContactPerson.Description
+                                            : 'Виберіть контактну особу'
+                                        }
+                                    </button>
+                                    {showContactPersonsDropdown && (
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-200">
+                                            {contactPersons.map((person, index) => (
+                                                <div
+                                                    key={`${person.Ref}-${index}`}
+                                                    className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                                    onClick={() => handleSelectContactPerson(person)}
+                                                >
+                                                    <span className="block truncate font-medium">
+                                                        {`${person.LastName} ${person.FirstName}`.trim() || person.Description}
+                                                    </span>
+                                                    {person.Phones && (
+                                                        <span className="block text-xs text-gray-500 mt-1">
+                                                            {person.Phones}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Відображення обраної контактної особи та телефону */}
+                        <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                            <p className="text-sm text-gray-700">
+                                <strong>Відправник:</strong>{' '}
+                                {selectedContactPerson 
+                                    ? `${selectedContactPerson.LastName} ${selectedContactPerson.FirstName}`.trim() || selectedContactPerson.Description
+                                    : selectedExistingSender.Description
+                                }
+                            </p>
+                            {selectedContactPerson?.Phones && (
+                                <p className="text-xs text-gray-600 mt-1">Телефон: {selectedContactPerson.Phones}</p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedExistingSender(null);
+                                    setSelectedContactPerson(null);
+                                    setContactPersons([]);
+                                    setPhone('');
+                                    setSelectedCity('');
+                                    setSelectedWarehouse('');
+                                    setCitySearch('');
+                                    setWarehouseSearch('');
+                                    setShowExistingSendersDropdown(existingSenders.length > 1);
+                                }}
+                                className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                                Вибрати іншого відправника
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div className="relative" ref={cityDropdownRef}>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                    Місто
+                </label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        id="city"
+                        value={citySearch}
+                        onChange={handleCityInputChange}
+                        required
+                        placeholder="Введіть мінімум 2 літери для пошуку"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                    />
+                    {isCityLoading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                        </div>
+                    )}
                 </div>
-            )}
+                {cityError && (
+                    <p className="mt-2 text-sm text-red-600">{cityError}</p>
+                )}
+                {showCityDropdown && cities.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                        {cities.map((city, index) => (
+                            <div
+                                key={`${city.Ref}-${index}`}
+                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                onClick={() => handleCitySelect(city)}
+                            >
+                                <span className="block truncate">{city.Description}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="relative" ref={warehouseDropdownRef}>
+                <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 mb-2">
+                    Відділення
+                </label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        id="warehouse"
+                        value={warehouseSearch}
+                        onChange={handleWarehouseInputChange}
+                        onFocus={handleWarehouseInputFocus}
+                        required
+                        disabled={!selectedCity}
+                        placeholder={selectedCity ? "Введіть назву відділення" : "Спочатку виберіть місто"}
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 ${!selectedCity ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+                    />
+                    {isWarehouseLoading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                        </div>
+                    )}
+                </div>
+                {warehouseError && (
+                    <p className="mt-2 text-sm text-red-600">{warehouseError}</p>
+                )}
+                {showWarehouseDropdown && warehouses.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
+                        {warehouses.map((warehouse, index) => (
+                            <div
+                                key={`${warehouse.Ref}-${index}`}
+                                className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
+                                onClick={() => handleWarehouseSelect(warehouse)}
+                            >
+                                <span className="block truncate">{warehouse.Description}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div className="flex justify-end space-x-3">
                 {onCancel && (

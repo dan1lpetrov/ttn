@@ -1,6 +1,8 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import AddClientForm from '../components/AddClientForm';
+import SendersList from '../components/SendersList';
+import CreateTTNForm from '../components/CreateTTNForm';
 
 export default async function DashboardPage() {
   const supabase = createServerComponentClient({ cookies });
@@ -31,6 +33,29 @@ export default async function DashboardPage() {
       </nav>
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="space-y-6">
+          {/* Секція створення ТТН */}
+          <div className="bg-white shadow sm:rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg font-medium leading-6 text-gray-900">
+                Створити ТТН
+              </h3>
+              <div className="mt-2 max-w-xl text-sm text-gray-500">
+                <p>Створіть нову транспортну накладну</p>
+              </div>
+              <div className="mt-5">
+                <CreateTTNForm />
+              </div>
+            </div>
+          </div>
+
+          {/* Секція відправників */}
+          <div className="bg-white shadow sm:rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <SendersList />
+            </div>
+          </div>
+
+          {/* Секція клієнтів */}
           <div className="bg-white shadow sm:rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg font-medium leading-6 text-gray-900">

@@ -147,7 +147,11 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             }
             const data = await response.json();
             if (data.success) {
-                setCities(data.data);
+                // Фільтруємо дубльовані міста за Ref
+                const uniqueCities = data.data.filter((city: City, index: number, self: City[]) => 
+                    index === self.findIndex((c: City) => c.Ref === city.Ref)
+                );
+                setCities(uniqueCities);
                 setShowCityDropdown(true);
             } else {
                 throw new Error(data.error || 'Помилка при пошуку міст');
@@ -174,7 +178,11 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             }
             const data = await response.json();
             if (data.success) {
-                setWarehouses(data.data);
+                // Фільтруємо дубльовані відділення за Ref
+                const uniqueWarehouses = data.data.filter((warehouse: Warehouse, index: number, self: Warehouse[]) => 
+                    index === self.findIndex((w: Warehouse) => w.Ref === warehouse.Ref)
+                );
+                setWarehouses(uniqueWarehouses);
                 setShowWarehouseDropdown(true);
             } else {
                 throw new Error(data.error || 'Помилка при пошуку відділень');
@@ -257,6 +265,19 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             const selectedCityData = cities.find(city => city.Ref === selectedCity);
             const selectedWarehouseData = warehouses.find(warehouse => warehouse.Ref === selectedWarehouse);
 
+            console.log('Selected data:', {
+                selectedCity,
+                selectedCityData,
+                selectedWarehouse,
+                selectedWarehouseData,
+                warehouseSearch,
+                warehousesCount: warehouses.length
+            });
+
+            if (!selectedWarehouseData && !warehouseSearch) {
+                throw new Error('Відділення не вибрано');
+            }
+
             console.log('Creating Nova Poshta entities...');
             
             // Створюємо контакт та контрагента в Новій Пошті
@@ -267,8 +288,10 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
             console.log('Counterparty created:', counterparty);
 
             console.log('Saving client to database with refs:', {
-                contact_ref: contact.Ref,
-                counterparty_ref: counterparty.Ref
+                contact_ref: contact.ContactRef || contact.Ref,
+                counterparty_ref: counterparty.Ref,
+                contact_full: contact,
+                counterparty_full: counterparty
             });
 
             const { error: insertError } = await supabase
@@ -281,9 +304,10 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                         city_ref: selectedCity,
                         city_name: selectedCityData?.Description,
                         warehouse_ref: selectedWarehouse,
-                        warehouse_desc: selectedWarehouseData?.Description,
+                        warehouse_name: selectedWarehouseData?.Description || warehouseSearch || '',
+                        warehouse_desc: selectedWarehouseData?.Description || warehouseSearch,
                         user_id: user.id,
-                        contact_ref: contact.Ref,
+                        contact_ref: contact.ContactRef || contact.Ref,
                         counterparty_ref: counterparty.Ref
                     }
                 ]);
@@ -408,9 +432,9 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                             )}
                             {showCityDropdown && cities.length > 0 && (
                                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
-                                    {cities.map((city) => (
+                                    {cities.map((city, index) => (
                                         <div
-                                            key={city.Ref}
+                                            key={`${city.Ref}-${index}`}
                                             className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
                                             onClick={() => handleCitySelect(city)}
                                         >
@@ -447,9 +471,9 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                             )}
                             {showWarehouseDropdown && warehouses.length > 0 && (
                                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm">
-                                    {warehouses.map((warehouse) => (
+                                    {warehouses.map((warehouse, index) => (
                                         <div
-                                            key={warehouse.Ref}
+                                            key={`${warehouse.Ref}-${index}`}
                                             className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50"
                                             onClick={() => handleWarehouseSelect(warehouse)}
                                         >

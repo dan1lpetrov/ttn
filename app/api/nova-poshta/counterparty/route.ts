@@ -5,7 +5,17 @@ const API_KEY = process.env.NOVA_POSHTA_API_KEY;
 
 export async function POST(request: Request) {
     try {
-        const { firstName, lastName, phone } = await request.json();
+        if (!API_KEY) {
+            console.error('NOVA_POSHTA_API_KEY is not set');
+            return NextResponse.json(
+                { success: false, error: 'API key is not configured' },
+                { status: 500 }
+            );
+        }
+
+        const { firstName, lastName, phone, counterpartyProperty = 'Recipient' } = await request.json();
+
+        console.log('Creating counterparty with:', { firstName, lastName, phone, counterpartyProperty, apiKeyExists: !!API_KEY });
 
         const requestData = {
             apiKey: API_KEY,
@@ -15,11 +25,12 @@ export async function POST(request: Request) {
                 FirstName: firstName,
                 LastName: lastName,
                 Phone: phone,
-                Email: '',
                 CounterpartyType: 'PrivatePerson',
-                CounterpartyProperty: 'Recipient'
+                CounterpartyProperty: counterpartyProperty // 'Recipient' або 'Sender'
             }
         };
+
+        console.log('Nova Poshta request:', JSON.stringify(requestData, null, 2));
 
         const response = await fetch(NOVA_POSHTA_API_URL, {
             method: 'POST',
@@ -30,15 +41,37 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
+        console.log('Nova Poshta response:', JSON.stringify(data, null, 2));
         
         if (!data.success) {
+            const errorMessage = data.errors?.join(', ') || data.errorCodes?.join(', ') || 'Unknown error';
+            console.error('Nova Poshta API error:', errorMessage);
             return NextResponse.json(
-                { success: false, error: data.errors.join(', ') },
+                { success: false, error: errorMessage },
                 { status: 400 }
             );
         }
 
-        return NextResponse.json({ success: true, data: data.data[0] });
+        // Отримуємо дані контрагента та контактної особи
+        const counterpartyData = data.data?.[0];
+        if (!counterpartyData) {
+            return NextResponse.json(
+                { success: false, error: 'No data returned from API' },
+                { status: 400 }
+            );
+        }
+
+        // Отримуємо contactRef з ContactPerson, якщо він є
+        const contactRef = counterpartyData.ContactPerson?.data?.[0]?.Ref || counterpartyData.Ref;
+
+        return NextResponse.json({ 
+            success: true, 
+            data: {
+                Ref: counterpartyData.Ref,
+                ContactRef: contactRef,
+                ...counterpartyData
+            }
+        });
     } catch (error) {
         console.error('Error creating counterparty:', error);
         return NextResponse.json(
