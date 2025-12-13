@@ -33,13 +33,16 @@ export default function Home() {
         console.log('Starting Google Sign-In process...');
         try {
             // Визначаємо правильний URL для редиректу
-            // На продакшні використовуємо window.location.origin, який автоматично визначить правильний домен
-            // На клієнті window.location.origin завжди правильний для поточного домену
+            // Використовуємо window.location.origin, який завжди правильний для поточного домену
+            // Це працює як на localhost, так і на продакшні
             const redirectUrl = typeof window !== 'undefined' 
                 ? `${window.location.origin}/auth/callback`
-                : '/auth/callback';
+                : process.env.NEXT_PUBLIC_SITE_URL 
+                    ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+                    : '/auth/callback';
             
             console.log('Using redirect URL:', redirectUrl);
+            console.log('Current origin:', typeof window !== 'undefined' ? window.location.origin : 'server-side');
             
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
