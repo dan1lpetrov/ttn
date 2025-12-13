@@ -3,20 +3,26 @@
 ## Проблема
 Після логіну через Google користувача перекидає на localhost замість продакшн URL.
 
+**Причина:** В Supabase Dashboard встановлений Site URL як `http://localhost:3000`, тому Supabase використовує цей URL в JWT токені стану, навіть якщо код передає правильний `redirectTo`.
+
 ## Рішення
 
-### 1. Налаштування в Supabase Dashboard
+### 1. Налаштування в Supabase Dashboard (ОБОВ'ЯЗКОВО!)
 
-1. Перейдіть в Supabase Dashboard → Authentication → URL Configuration
-2. Встановіть **Site URL** на ваш продакшн URL:
+1. Перейдіть в [Supabase Dashboard](https://supabase.com/dashboard)
+2. Виберіть ваш проект
+3. Перейдіть в **Authentication** → **URL Configuration**
+4. **ВАЖЛИВО:** Встановіть **Site URL** на ваш продакшн URL:
    ```
-   https://your-app.vercel.app
+   https://ttn-one.vercel.app
    ```
-3. Додайте **Redirect URLs**:
+   **НЕ використовуйте `http://localhost:3000` як Site URL на продакшні!**
+5. Додайте **Redirect URLs** (можна додати кілька):
    ```
-   https://your-app.vercel.app/auth/callback
+   https://ttn-one.vercel.app/auth/callback
    http://localhost:3000/auth/callback
    ```
+   (Останній потрібен тільки для локальної розробки)
 
 ### 2. Налаштування в Google Cloud Console
 

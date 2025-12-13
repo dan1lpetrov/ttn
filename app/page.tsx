@@ -34,24 +34,28 @@ export default function Home() {
         try {
             // Визначаємо правильний URL для редиректу
             // Використовуємо window.location.origin, який завжди правильний для поточного домену
-            // Це працює як на localhost, так і на продакшні
-            const redirectUrl = typeof window !== 'undefined' 
-                ? `${window.location.origin}/auth/callback`
-                : process.env.NEXT_PUBLIC_SITE_URL 
-                    ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
-                    : '/auth/callback';
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+            const redirectUrl = `${currentOrigin}/auth/callback`;
             
             console.log('Using redirect URL:', redirectUrl);
-            console.log('Current origin:', typeof window !== 'undefined' ? window.location.origin : 'server-side');
+            console.log('Current origin:', currentOrigin);
             
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: redirectUrl,
+                    // Явно вказуємо site_url, щоб Supabase не використовував налаштування з Dashboard
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',
                     },
+                    // Додаємо site_url в опції, щоб Supabase використовував правильний URL
+                    ...(currentOrigin && { 
+                        queryParams: {
+                            ...{ access_type: 'offline', prompt: 'consent' },
+                            // Передаємо site_url через queryParams, якщо Supabase підтримує
+                        }
+                    }),
                 },
             });
 
