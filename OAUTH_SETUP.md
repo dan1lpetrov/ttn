@@ -29,12 +29,12 @@
 1. Перейдіть в [Google Cloud Console](https://console.cloud.google.com/)
 2. Виберіть ваш проект
 3. Перейдіть в **APIs & Services** → **Credentials**
-4. Виберіть ваш OAuth 2.0 Client ID
-5. В розділі **Authorized redirect URIs** додайте:
+4. Виберіть ваш OAuth 2.0 Client ID (ID: `989968958332-tlgp4drmcra2ck8esg9tu7su6lvtciro`)
+5. В розділі **Authorized redirect URIs** переконайтеся, що є:
    ```
-   https://your-project.supabase.co/auth/v1/callback
+   https://yicvpfphbvjhjikclika.supabase.co/auth/v1/callback
    ```
-   (Замініть `your-project` на ваш Supabase project reference)
+   (Це URL Supabase, який обробляє OAuth callback)
 
 ### 3. Перевірка змінних оточення на Vercel
 
@@ -47,7 +47,15 @@
 
 Після зміни налаштувань в Supabase Dashboard перезапустіть деплой на Vercel.
 
+## Важливо!
+
+**Проблема в тому, що в Supabase Dashboard встановлений Site URL як `http://localhost:3000`.**
+
+Це видно в JWT токені стану, де `site_url: "http://localhost:3000"`. Навіть якщо код передає правильний `redirectTo: "https://ttn-one.vercel.app/auth/callback"`, Supabase все одно використовує Site URL з Dashboard для створення JWT токену стану.
+
+**Рішення:** Обов'язково змініть **Site URL** в Supabase Dashboard на `https://ttn-one.vercel.app`!
+
 ## Примітка
 
-Код автоматично використовує `window.location.origin`, який завжди правильний для поточного домену. Якщо проблема залишається, перевірте налаштування в Supabase Dashboard.
+Код автоматично використовує `window.location.origin`, який завжди правильний для поточного домену. Але Supabase використовує Site URL з Dashboard для створення JWT токену стану, тому налаштування в Dashboard критично важливі.
 
