@@ -62,6 +62,7 @@ export default function SenderSection() {
     const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
     const cityDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseDropdownRef = useRef<HTMLDivElement>(null);
+    const warehouseInputRef = useRef<HTMLInputElement>(null);
 
     const fetchSender = useCallback(async () => {
         try {
@@ -455,6 +456,7 @@ export default function SenderSection() {
 
                         <div className="relative" ref={warehouseDropdownRef}>
                             <input
+                                ref={warehouseInputRef}
                                 type="text"
                                 value={newWarehouseSearch}
                                 onChange={(e) => {
@@ -467,6 +469,12 @@ export default function SenderSection() {
                                 onFocus={() => {
                                     if (selectedNewCity) {
                                         fetchWarehouses(newWarehouseSearch);
+                                    }
+                                    // Прокручуємо інпут до верху екрана на мобільних пристроях
+                                    if (warehouseInputRef.current && window.innerWidth < 640) {
+                                        setTimeout(() => {
+                                            warehouseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }, 100);
                                     }
                                 }}
                                 disabled={!selectedNewCity}

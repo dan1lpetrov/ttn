@@ -116,6 +116,7 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
     const [warehouseError, setWarehouseError] = useState<string | null>(null);
     const cityDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseDropdownRef = useRef<HTMLDivElement>(null);
+    const warehouseInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClientComponentClient();
 
     useEffect(() => {
@@ -235,6 +236,12 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
     const handleWarehouseInputFocus = () => {
         if (selectedCity) {
             fetchWarehouses(warehouseSearch);
+        }
+        // Прокручуємо інпут до верху екрана на мобільних пристроях
+        if (warehouseInputRef.current && window.innerWidth < 640) {
+            setTimeout(() => {
+                warehouseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
     };
 
@@ -445,6 +452,7 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                             </label>
                             <div className="relative">
                                 <input
+                                    ref={warehouseInputRef}
                                     type="text"
                                     id="warehouse"
                                     value={warehouseSearch}

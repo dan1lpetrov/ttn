@@ -45,6 +45,7 @@ export default function EditSenderLocationModal({
     const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
     const cityDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseDropdownRef = useRef<HTMLDivElement>(null);
+    const warehouseInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClientComponentClient();
 
     useEffect(() => {
@@ -151,6 +152,12 @@ export default function EditSenderLocationModal({
         if (selectedCity) {
             fetchWarehouses(warehouseSearch);
         }
+        // Прокручуємо інпут до верху екрана на мобільних пристроях
+        if (warehouseInputRef.current && window.innerWidth < 640) {
+            setTimeout(() => {
+                warehouseInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -256,6 +263,7 @@ export default function EditSenderLocationModal({
                     </label>
                     <div className="relative">
                         <input
+                            ref={warehouseInputRef}
                             type="text"
                             id="warehouse"
                             value={warehouseSearch}
