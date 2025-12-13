@@ -358,25 +358,53 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                 sender_address_ref: senderAddressRef
             });
 
-            const { error: insertError } = await supabase
+            // Перевіряємо, чи вже є відправник з таким sender_ref
+            const { data: existingSenderData } = await supabase
                 .from('sender')
-                .insert([
-                    {
-                        user_id: user.id,
-                        name: senderName,
-                        phone: senderPhone,
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('sender_ref', selectedExistingSender.Ref)
+                .single();
+
+            if (existingSenderData) {
+                // Оновлюємо існуючий запис (тільки місто та відділення)
+                const { error: updateError } = await supabase
+                    .from('sender')
+                    .update({
                         city_ref: cityRef,
                         city_name: selectedCityData.Description,
-                        sender_ref: selectedExistingSender.Ref,
                         sender_address_ref: senderAddressRef,
                         sender_address_name: senderAddressName,
-                        contact_sender_ref: selectedContactPerson.Ref
-                    }
-                ]);
+                    })
+                    .eq('id', existingSenderData.id)
+                    .eq('user_id', user.id);
 
-            if (insertError) {
-                console.error('Error inserting sender:', insertError);
-                throw insertError;
+                if (updateError) {
+                    console.error('Error updating sender:', updateError);
+                    throw updateError;
+                }
+            } else {
+                // Створюємо новий запис
+                const { error: insertError } = await supabase
+                    .from('sender')
+                    .insert([
+                        {
+                            user_id: user.id,
+                            name: senderName,
+                            phone: senderPhone,
+                            city_ref: cityRef,
+                            city_name: selectedCityData.Description,
+                            sender_ref: selectedExistingSender.Ref,
+                            sender_address_ref: senderAddressRef,
+                            sender_address_name: senderAddressName,
+                            contact_sender_ref: selectedContactPerson.Ref
+                        }
+                    ]);
+
+                if (insertError) {
+                    console.error('Error inserting sender:', insertError);
+                    throw insertError;
+                }
             }
 
             // Очищаємо форму
@@ -502,23 +530,6 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                             {selectedContactPerson?.Phones && (
                                 <p className="text-xs text-gray-600 mt-1">Телефон: {selectedContactPerson.Phones}</p>
                             )}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSelectedExistingSender(null);
-                                    setSelectedContactPerson(null);
-                                    setContactPersons([]);
-                                    setPhone('');
-                                    setSelectedCity('');
-                                    setSelectedWarehouse('');
-                                    setCitySearch('');
-                                    setWarehouseSearch('');
-                                    setShowExistingSendersDropdown(existingSenders.length > 1);
-                                }}
-                                className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
-                            >
-                                Вибрати іншого відправника
-                            </button>
                         </div>
                     </>
                 )}
@@ -598,8 +609,8 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                                 <span className="block truncate">{warehouse.Description}</span>
                             </div>
                         ))}
-                    </div>
-                )}
+                </div>
+            )}
             </div>
 
             <div className="flex justify-end space-x-3">

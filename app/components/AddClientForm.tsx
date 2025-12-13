@@ -15,6 +15,7 @@ interface Warehouse {
 
 interface AddClientFormProps {
     onSuccess?: () => void;
+    onCancel?: () => void;
 }
 
 // Додаємо функцію для форматування телефону
@@ -95,7 +96,7 @@ async function createNovaPoshtaCounterparty(firstName: string, lastName: string,
     return data.data;
 }
 
-export default function AddClientForm({ onSuccess }: AddClientFormProps) {
+export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProps) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
@@ -340,13 +341,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
     };
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <div className="bg-white shadow sm:rounded-lg">
-                <div className="px-6 py-8">
-                    <h3 className="text-xl font-semibold leading-6 text-gray-900 mb-6">
-                        Додати нового клієнта
-                    </h3>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <div className="bg-red-50 p-4 rounded-md">
                                 <div className="flex">
@@ -374,7 +369,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                     required
                                     pattern="[\u0400-\u04FF\s]+"
                                     title="Введіть тільки українські літери"
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -389,7 +384,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                     required
                                     pattern="[\u0400-\u04FF\s]+"
                                     title="Введіть тільки українські літери"
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                             </div>
                         </div>
@@ -404,7 +399,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                 onChange={handlePhoneChange}
                                 required
                                 placeholder="+380XXXXXXXXX"
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                             />
                         </div>
                         <div className="relative" ref={cityDropdownRef}>
@@ -419,7 +414,7 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                     onChange={handleCityInputChange}
                                     required
                                     placeholder="Введіть мінімум 2 літери для пошуку"
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                                 />
                                 {isCityLoading && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -483,22 +478,35 @@ export default function AddClientForm({ onSuccess }: AddClientFormProps) {
                                 </div>
                             )}
                         </div>
-                        <div>
+                        <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                            {onCancel && (
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    className="flex-1 py-2 px-3 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                    Скасувати
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                className={`${onCancel ? 'flex-1' : 'w-full'} py-2 px-3 rounded-lg transition-colors ${
+                                    loading
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
                             >
                                 {loading ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                    <div className="flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Збереження...
+                                    </div>
                                 ) : (
-                                    'Додати клієнта'
+                                    'Зберегти'
                                 )}
                             </button>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
     );
 } 

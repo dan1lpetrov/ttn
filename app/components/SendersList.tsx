@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Modal from './Modal';
 import SenderForm from './SenderForm';
+import EditSenderLocationModal from './EditSenderLocationModal';
+import { useTTN } from '../contexts/TTNContext';
 
 interface Sender {
     id: string;
@@ -11,6 +13,7 @@ interface Sender {
     phone: string;
     city_name: string;
     sender_address_name: string;
+    sender_ref: string;
     created_at: string;
 }
 
@@ -19,6 +22,10 @@ export default function SendersList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingSenderId, setEditingSenderId] = useState<string | null>(null);
+    const [editingSender, setEditingSender] = useState<Sender | null>(null);
+    const [visibleCount, setVisibleCount] = useState(8);
+    const { selectedSenderId, setSelectedSenderId } = useTTN();
     const supabase = createClientComponentClient();
 
     const fetchSenders = useCallback(async () => {
@@ -26,6 +33,7 @@ export default function SendersList() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user found');
 
+            // Отримуємо унікальних відправників (по sender_ref)
             const { data, error } = await supabase
                 .from('sender')
                 .select('*')
@@ -33,14 +41,30 @@ export default function SendersList() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setSenders(data || []);
+            
+            // Групуємо по sender_ref, беремо останній запис для кожного відправника
+            const sendersMap = new Map<string, Sender>();
+            (data || []).forEach((sender: any) => {
+                const key = sender.sender_ref;
+                if (!sendersMap.has(key) || new Date(sender.updated_at) > new Date(sendersMap.get(key)!.created_at)) {
+                    sendersMap.set(key, sender);
+                }
+            });
+            
+            const sendersData = Array.from(sendersMap.values());
+            setSenders(sendersData);
+            
+            // Автоматично вибираємо першого відправника, якщо є
+            if (sendersData.length > 0 && !selectedSenderId) {
+                setSelectedSenderId(sendersData[0].id);
+            }
         } catch (err) {
             console.error('Error fetching senders:', err);
             setError('Помилка при завантаженні відправників');
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, selectedSenderId, setSelectedSenderId]);
 
     useEffect(() => {
         fetchSenders();
@@ -71,47 +95,55 @@ export default function SendersList() {
         );
     }
 
+    const visibleSenders = senders.slice(0, visibleCount);
+    const hasMore = senders.length > visibleCount;
+
+    const handleSenderClick = (sender: Sender) => {
+        setSelectedSenderId(sender.id);
+        setEditingSender(sender);
+        setEditingSenderId(sender.id);
+    };
+
+    const handleShowMore = () => {
+        setVisibleCount(prev => Math.min(prev + 8, senders.length));
+    };
+
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">Відправники</h2>
+        <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {visibleSenders.map((sender) => (
+                    <div
+                        key={sender.id}
+                        onClick={() => handleSenderClick(sender)}
+                        className={`px-3 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
+                            selectedSenderId === sender.id
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        <div className="text-sm font-medium truncate">{sender.name}</div>
+                    </div>
+                ))}
+                {hasMore && (
+                    <button
+                        onClick={handleShowMore}
+                        className="px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm"
+                    >
+                        Показати ще
+                    </button>
+                )}
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm"
                 >
-                    Додати відправника
+                    + Додати
                 </button>
             </div>
 
-            {senders.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <p className="text-gray-500">Немає відправників</p>
-                </div>
-            ) : (
-                <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                    <ul className="divide-y divide-gray-200">
-                        {senders.map((sender) => (
-                            <li key={sender.id}>
-                                <div className="px-4 py-4 sm:px-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-blue-600 truncate">
-                                                {sender.name}
-                                            </p>
-                                            <p className="mt-1 text-sm text-gray-500">
-                                                {sender.city_name}, {sender.sender_address_name}
-                                            </p>
-                                        </div>
-                                        <div className="ml-4 flex-shrink-0">
-                                            <p className="text-sm text-gray-500">
-                                                {sender.phone}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+            {senders.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                    <p>Немає відправників</p>
+                    <p className="text-sm">Додайте першого відправника</p>
                 </div>
             )}
 
@@ -121,13 +153,45 @@ export default function SendersList() {
                 title="Додати відправника"
             >
                 <SenderForm
-                    onSuccess={() => {
+                    onSuccess={async () => {
                         setShowAddModal(false);
-                        fetchSenders();
+                        await fetchSenders();
+                        // Після оновлення списку, вибираємо останнього доданого відправника
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            const { data: latestSender } = await supabase
+                                .from('sender')
+                                .select('id')
+                                .eq('user_id', user.id)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .single();
+                            if (latestSender) {
+                                setSelectedSenderId(latestSender.id);
+                            }
+                        }
                     }}
                     onCancel={() => setShowAddModal(false)}
                 />
             </Modal>
-        </div>
+
+            {editingSender && (
+                <EditSenderLocationModal
+                    isOpen={editingSenderId !== null}
+                    onClose={() => {
+                        setEditingSenderId(null);
+                        setEditingSender(null);
+                    }}
+                    senderRef={editingSender.sender_ref}
+                    currentCityName={editingSender.city_name}
+                    currentWarehouseName={editingSender.sender_address_name}
+                    onSuccess={async () => {
+                        await fetchSenders();
+                        setEditingSenderId(null);
+                        setEditingSender(null);
+                    }}
+                />
+            )}
+        </>
     );
 } 

@@ -1,76 +1,59 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import AddClientForm from '../components/AddClientForm';
-import SendersList from '../components/SendersList';
+import ClientsList from '../components/ClientsList';
+import SenderSection from '../components/SenderSection';
 import CreateTTNForm from '../components/CreateTTNForm';
+import { TTNProvider } from '../contexts/TTNContext';
 
 export default async function DashboardPage() {
   const supabase = createServerComponentClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm">
+    <TTNProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold text-gray-900">TTN One</span>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <form action="/auth/signout" method="post">
-                <button
-                  type="submit"
-                  className="ml-4 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
-                >
-                  Вийти
-                </button>
-              </form>
-            </div>
+          <div className="flex justify-between items-center h-16">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Сервіс створення ТТН</h1>
+            <form action="/auth/signout" method="post">
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+              >
+                Вийти
+              </button>
+            </form>
           </div>
         </div>
-      </nav>
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
-          {/* Секція створення ТТН */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium leading-6 text-gray-900">
-                Створити ТТН
-              </h3>
-              <div className="mt-2 max-w-xl text-sm text-gray-500">
-                <p>Створіть нову транспортну накладну</p>
-              </div>
-              <div className="mt-5">
-                <CreateTTNForm />
-              </div>
-            </div>
-          </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="space-y-6 pb-20">
           {/* Секція відправників */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <SendersList />
-            </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+            <h2 className="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">Відправник</h2>
+            <SenderSection />
           </div>
 
           {/* Секція клієнтів */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium leading-6 text-gray-900">
-                Додати нового клієнта
-              </h3>
-              <div className="mt-2 max-w-xl text-sm text-gray-500">
-                <p>Заповніть форму для додавання нового клієнта</p>
-              </div>
-              <div className="mt-5">
-                <AddClientForm />
-              </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Клієнти</h2>
             </div>
+            <ClientsList />
+          </div>
+
+          {/* Секція створення ТТН */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">ТТН</h2>
+            </div>
+            <CreateTTNForm />
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </TTNProvider>
   );
 } 

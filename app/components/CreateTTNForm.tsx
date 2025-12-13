@@ -1,67 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useTTN } from '../contexts/TTNContext';
 
 interface CreateTTNFormProps {
     onSuccess?: () => void;
 }
 
-interface Client {
-    id: string;
-    first_name: string;
-    last_name: string;
-    city_name: string;
-    warehouse_name: string;
-}
-
-interface Sender {
-    id: string;
-    name: string;
-    city_name: string;
-    sender_address_name: string;
-}
-
 export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
     const [description, setDescription] = useState('');
     const [cost, setCost] = useState('');
-    const [clientId, setClientId] = useState('');
-    const [senderId, setSenderId] = useState('');
-    const [clients, setClients] = useState<Client[]>([]);
-    const [senders, setSenders] = useState<Sender[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { selectedSenderId, selectedClientId } = useTTN();
     const supabase = createClientComponentClient();
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                // Завантажуємо клієнтів
-                const { data: clientsData } = await supabase
-                    .from('clients')
-                    .select('id, first_name, last_name, city_name, warehouse_name')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
-
-                // Завантажуємо відправників
-                const { data: sendersData } = await supabase
-                    .from('sender')
-                    .select('id, name, city_name, sender_address_name')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
-
-                setClients(clientsData || []);
-                setSenders(sendersData || []);
-            } catch (err) {
-                console.error('Error fetching data:', err);
-            }
-        };
-
-        fetchData();
-    }, [supabase]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,7 +25,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Користувач не авторизований');
 
-            if (!clientId || !senderId) {
+            if (!selectedClientId || !selectedSenderId) {
                 throw new Error('Виберіть клієнта та відправника');
             }
 
@@ -82,8 +35,8 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    clientId,
-                    senderId,
+                    clientId: selectedClientId,
+                    senderId: selectedSenderId,
                     description,
                     cost: parseFloat(cost),
                 }),
@@ -98,8 +51,6 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
 
             setDescription('');
             setCost('');
-            setClientId('');
-            setSenderId('');
             if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error creating TTN:', error);
@@ -112,7 +63,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div className="bg-red-50 p-4 rounded-md">
+                <div className="bg-red-50 dark:bg-red-900 p-4 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
                             <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -126,83 +77,84 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                 </div>
             )}
 
-            <div>
-                <label htmlFor="sender" className="block text-sm font-medium text-gray-700 mb-2">
-                    Відправник
-                </label>
-                <select
-                    id="sender"
-                    value={senderId}
-                    onChange={(e) => setSenderId(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
-                    required
-                >
-                    <option value="">Виберіть відправника</option>
-                    {senders.map((sender) => (
-                        <option key={sender.id} value={sender.id}>
-                            {sender.name} - {sender.city_name}, {sender.sender_address_name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+            {(!selectedSenderId || !selectedClientId) && (
+                <div className="bg-yellow-50 dark:bg-yellow-900 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        {!selectedSenderId && !selectedClientId 
+                            ? 'Виберіть відправника та клієнта вище'
+                            : !selectedSenderId 
+                            ? 'Виберіть відправника вище'
+                            : 'Виберіть клієнта вище'
+                        }
+                    </p>
+                </div>
+            )}
 
             <div>
-                <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-2">
-                    Отримувач (клієнт)
-                </label>
-                <select
-                    id="client"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
-                    required
-                >
-                    <option value="">Виберіть клієнта</option>
-                    {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                            {client.first_name} {client.last_name} - {client.city_name}, {client.warehouse_name}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                    Опис вантажу
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Опис вантажу *
                 </label>
                 <input
                     type="text"
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                    className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                     required
                     placeholder="Опишіть вантаж"
                 />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {['Одяг', 'Взуття', 'Особисті речі'].map(item => (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => setDescription(item)}
+                            className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                            {item}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div>
-                <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-2">
-                    Вартість (грн)
+                <label htmlFor="cost" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Вартість (грн) *
                 </label>
                 <input
                     type="number"
                     id="cost"
                     value={cost}
                     onChange={(e) => setCost(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5"
+                    className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                     required
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                 />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {['200', '500', '1000', '5000'].map(costValue => (
+                        <button
+                            key={costValue}
+                            type="button"
+                            onClick={() => setCost(costValue)}
+                            className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                        >
+                            {costValue} грн
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex space-x-3">
                 <button
                     type="submit"
-                    disabled={loading}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    disabled={loading || !selectedSenderId || !selectedClientId}
+                    className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                        loading || !selectedSenderId || !selectedClientId
+                            ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                            : 'bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600'
+                    }`}
                 >
                     {loading ? 'Створення...' : 'Створити ТТН'}
                 </button>
