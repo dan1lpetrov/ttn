@@ -53,9 +53,48 @@ export default function ClientsList() {
     const [showWarehouseDropdown, setShowWarehouseDropdown] = useState(false);
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
+    const [popularCities, setPopularCities] = useState<City[]>([]);
+    const [loadingPopularCities, setLoadingPopularCities] = useState(false);
     const cityDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseInputRef = useRef<HTMLInputElement>(null);
+
+    // Завантажуємо популярні міста при монтуванні
+    useEffect(() => {
+        const loadPopularCities = async () => {
+            setLoadingPopularCities(true);
+            const popularCityNames = ['Київ', 'Харків', 'Львів', 'Дніпро', 'Запоріжжя'];
+            const cities: City[] = [];
+
+            for (const cityName of popularCityNames) {
+                try {
+                    const response = await fetch(`/api/nova-poshta/cities?search=${encodeURIComponent(cityName)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data && data.data.length > 0) {
+                            // Знаходимо точний збіг (місто, а не село/селище)
+                            const exactMatch = data.data.find((c: City) => 
+                                c.Description === cityName || 
+                                c.Description.startsWith(cityName + ',')
+                            );
+                            if (exactMatch) {
+                                cities.push(exactMatch);
+                            } else if (data.data[0]) {
+                                cities.push(data.data[0]);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error loading popular city ${cityName}:`, err);
+                }
+            }
+
+            setPopularCities(cities);
+            setLoadingPopularCities(false);
+        };
+
+        loadPopularCities();
+    }, []);
 
     const fetchClients = useCallback(async () => {
         try {
@@ -208,6 +247,10 @@ export default function ClientsList() {
         setNewWarehouseSearch('');
         setSelectedNewWarehouse('');
         setNewWarehouses([]);
+        // Додаємо вибране місто до списку, якщо його там немає
+        if (!newCities.find(c => c.Ref === city.Ref)) {
+            setNewCities([city, ...newCities]);
+        }
     };
 
     const handleWarehouseSelect = (warehouse: Warehouse) => {
@@ -223,11 +266,19 @@ export default function ClientsList() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user found');
 
-            const selectedCityData = newCities.find(c => c.Ref === selectedNewCity);
+            // Шукаємо місто в newCities або popularCities
+            let selectedCityData = newCities.find(c => c.Ref === selectedNewCity);
+            if (!selectedCityData) {
+                selectedCityData = popularCities.find(c => c.Ref === selectedNewCity);
+            }
+            
             const selectedWarehouseData = newWarehouses.find(w => w.Ref === selectedNewWarehouse);
 
-            if (!selectedCityData || !selectedWarehouseData) {
-                throw new Error('Не вибрано місто або відділення');
+            if (!selectedCityData) {
+                throw new Error('Місто не вибрано');
+            }
+            if (!selectedWarehouseData) {
+                throw new Error('Відділення не вибрано');
             }
 
             // Перевіряємо, чи вже є така локація
@@ -438,6 +489,29 @@ export default function ClientsList() {
                                                                         {city.Description}
                                                                     </div>
                                                                 ))}
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Популярні міста */}
+                                                        {!selectedNewCity && !newCitySearch && (
+                                                            <div className="mt-2">
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Популярні міста:</div>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {loadingPopularCities ? (
+                                                                        <div className="text-xs text-gray-400">Завантаження...</div>
+                                                                    ) : (
+                                                                        popularCities.map((city) => (
+                                                                            <button
+                                                                                key={city.Ref}
+                                                                                type="button"
+                                                                                onClick={() => handleCitySelect(city)}
+                                                                                className="px-2 py-1 text-xs rounded-md bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800 border border-blue-200 dark:border-blue-700 transition-colors"
+                                                                            >
+                                                                                {city.Description.split(',')[0]}
+                                                                            </button>
+                                                                        ))
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>

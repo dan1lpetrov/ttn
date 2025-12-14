@@ -43,6 +43,8 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
     const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
     const [cityError, setCityError] = useState<string | null>(null);
     const [warehouseError, setWarehouseError] = useState<string | null>(null);
+    const [popularCities, setPopularCities] = useState<City[]>([]);
+    const [loadingPopularCities, setLoadingPopularCities] = useState(false);
     
     // Стан для вибору існуючого відправника
     const [existingSenders, setExistingSenders] = useState<ExistingSender[]>([]);
@@ -590,6 +592,29 @@ export default function SenderForm({ onSuccess, onCancel }: SenderFormProps) {
                                 <span className="block truncate">{city.Description}</span>
                             </div>
                         ))}
+                    </div>
+                )}
+                
+                {/* Популярні міста */}
+                {!selectedCity && !citySearch && (
+                    <div className="mt-2">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Популярні міста:</div>
+                        <div className="flex flex-wrap gap-2">
+                            {loadingPopularCities ? (
+                                <div className="text-xs text-gray-400">Завантаження...</div>
+                            ) : (
+                                popularCities.map((city) => (
+                                    <button
+                                        key={city.Ref}
+                                        type="button"
+                                        onClick={() => handleCitySelect(city)}
+                                        className="px-2 py-1 text-xs rounded-md bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800 border border-blue-200 dark:border-blue-700 transition-colors"
+                                    >
+                                        {city.Description.split(',')[0]}
+                                    </button>
+                                ))
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

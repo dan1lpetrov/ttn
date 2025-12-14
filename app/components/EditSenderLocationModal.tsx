@@ -43,10 +43,51 @@ export default function EditSenderLocationModal({
     const [error, setError] = useState<string | null>(null);
     const [isCityLoading, setIsCityLoading] = useState(false);
     const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
+    const [popularCities, setPopularCities] = useState<City[]>([]);
+    const [loadingPopularCities, setLoadingPopularCities] = useState(false);
     const cityDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseDropdownRef = useRef<HTMLDivElement>(null);
     const warehouseInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClientComponentClient();
+
+    // Завантажуємо популярні міста при монтуванні
+    useEffect(() => {
+        const loadPopularCities = async () => {
+            setLoadingPopularCities(true);
+            const popularCityNames = ['Київ', 'Харків', 'Львів', 'Дніпро', 'Запоріжжя'];
+            const loadedCities: City[] = [];
+
+            for (const cityName of popularCityNames) {
+                try {
+                    const response = await fetch(`/api/nova-poshta/cities?search=${encodeURIComponent(cityName)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data && data.data.length > 0) {
+                            // Знаходимо точний збіг (місто, а не село/селище)
+                            const exactMatch = data.data.find((c: City) => 
+                                c.Description === cityName || 
+                                c.Description.startsWith(cityName + ',')
+                            );
+                            if (exactMatch) {
+                                loadedCities.push(exactMatch);
+                            } else if (data.data[0]) {
+                                loadedCities.push(data.data[0]);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error loading popular city ${cityName}:`, err);
+                }
+            }
+
+            setPopularCities(loadedCities);
+            setLoadingPopularCities(false);
+        };
+
+        if (isOpen) {
+            loadPopularCities();
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -261,12 +302,35 @@ export default function EditSenderLocationModal({
                             {cities.map((city, index) => (
                                 <div
                                     key={`${city.Ref}-${index}`}
-                                    className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                                    className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                                     onClick={() => handleCitySelect(city)}
                                 >
                                     <span className="block truncate">{city.Description}</span>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                    
+                    {/* Популярні міста */}
+                    {!selectedCity && !citySearch && (
+                        <div className="mt-2">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Популярні міста:</div>
+                            <div className="flex flex-wrap gap-2">
+                                {loadingPopularCities ? (
+                                    <div className="text-xs text-gray-400">Завантаження...</div>
+                                ) : (
+                                    popularCities.map((city) => (
+                                        <button
+                                            key={city.Ref}
+                                            type="button"
+                                            onClick={() => handleCitySelect(city)}
+                                            className="px-2 py-1 text-xs rounded-md bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800 border border-blue-200 dark:border-blue-700 transition-colors"
+                                        >
+                                            {city.Description.split(',')[0]}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
