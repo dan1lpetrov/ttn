@@ -174,6 +174,70 @@ export default function ClientsList() {
         setSelectedClientLocationId(locationId);
     };
 
+    const handleDeleteLocation = async (locationId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Запобігаємо вибору локації при кліку на кнопку видалення
+        
+        if (!confirm('Ви впевнені, що хочете видалити цю локацію?')) {
+            return;
+        }
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            const { error } = await supabase
+                .from('client_locations')
+                .delete()
+                .eq('id', locationId);
+
+            if (error) throw error;
+
+            // Оновлюємо список клієнтів та локацій
+            await fetchClients();
+            
+            // Якщо видалена локація була вибрана, скидаємо вибір
+            if (selectedClientLocationId === locationId) {
+                setSelectedClientLocationId(null);
+            }
+        } catch (err) {
+            console.error('Error deleting location:', err);
+            alert('Помилка при видаленні локації');
+        }
+    };
+
+    const handleDeleteClient = async (clientId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Запобігаємо вибору клієнта при кліку на кнопку видалення
+        
+        if (!confirm('Ви впевнені, що хочете видалити цього клієнта? Всі його локації також будуть видалені.')) {
+            return;
+        }
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            const { error } = await supabase
+                .from('clients')
+                .delete()
+                .eq('id', clientId)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            // Оновлюємо список клієнтів
+            await fetchClients();
+            
+            // Якщо видалений клієнт був вибраний, скидаємо вибір
+            if (selectedClientId === clientId) {
+                setSelectedClientId(null);
+                setSelectedClientLocationId(null);
+            }
+        } catch (err) {
+            console.error('Error deleting client:', err);
+            alert('Помилка при видаленні клієнта');
+        }
+    };
+
     // Обробка кліку поза дропдаунами
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -417,46 +481,64 @@ export default function ClientsList() {
             ) : (
                 <div className="space-y-4">
                     {/* Список клієнтів */}
-                    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(clients.length, 4)}, 1fr)` }}>
-                        {clients.map(client => {
+                    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <div className="flex sm:grid gap-3 sm:gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(clients.length, 4)}, 1fr)` }}>
+                            {clients.map(client => {
                             const locations = clientLocations.get(client.id) || [];
                             return (
-                                <div key={client.id}>
+                                <div key={client.id} className="flex-shrink-0 min-w-[200px] max-w-[250px] sm:min-w-0 sm:max-w-none">
                                     <div
                                         onClick={() => handleClientSelect(client.id)}
-                                        className={`px-3 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
+                                        className={`px-3 py-2 rounded-lg border-2 cursor-pointer transition-colors relative ${
                                             selectedClientId === client.id
                                                 ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900'
                                                 : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500'
                                         }`}
                                     >
-                                        <div className={`font-medium break-words ${selectedClientId === client.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                                        <button
+                                            onClick={(e) => handleDeleteClient(client.id, e)}
+                                            className="absolute top-1 right-1 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400 transition-colors z-10"
+                                            title="Видалити клієнта"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                        <div className={`font-medium break-words pr-6 overflow-wrap-anywhere ${selectedClientId === client.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
                                             {client.first_name} {client.last_name}
                                         </div>
-                                        <div className="text-sm text-gray-600 dark:text-gray-400 break-words">{client.phone}</div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400 break-words overflow-wrap-anywhere mt-1">{client.phone}</div>
                                     </div>
+                                </div>
+                            );
+                        })}
+                        </div>
+                    </div>
 
-                                    {/* Локації вибраного клієнта */}
-                                    {selectedClientId === client.id && (
-                                        <div className="mt-2 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">Локації:</div>
-                                                {locations.length > 0 && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setAddingLocation(!addingLocation);
-                                                        }}
-                                                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                                                    >
-                                                        {addingLocation ? 'Скасувати' : '+ Додати'}
-                                                    </button>
-                                                )}
-                                            </div>
+                    {/* Локації вибраного клієнта - окремий блок */}
+                    {selectedClientId && (() => {
+                        const selectedClient = clients.find(c => c.id === selectedClientId);
+                        const locations = clientLocations.get(selectedClientId) || [];
+                        
+                        if (!selectedClient) return null;
+                        
+                        return (
+                            <div className="mt-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Адреси клієнта: {selectedClient.first_name} {selectedClient.last_name}
+                                    </div>
+                                    <button
+                                        onClick={() => setAddingLocation(!addingLocation)}
+                                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                    >
+                                        {addingLocation ? 'Скасувати' : '+ Додати адресу'}
+                                    </button>
+                                </div>
 
-                                            {/* Форма додавання нової локації */}
-                                            {(addingLocation || locations.length === 0) && (
-                                                <div className="mb-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-2">
+                                {/* Форма додавання локації */}
+                                {addingLocation && (
+                                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-2">
                                                     <div className="relative" ref={cityDropdownRef}>
                                                         <input
                                                             type="text"
@@ -562,70 +644,78 @@ export default function ClientsList() {
                                                         )}
                                                     </div>
 
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAddLocation();
+                                            }}
+                                            disabled={!selectedNewCity || !selectedNewWarehouse}
+                                            className="w-full px-2 py-1.5 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                        >
+                                            Додати
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Список локацій */}
+                                {locations.length > 0 && (() => {
+                                    const visibleCount = visibleLocationsCount.get(selectedClientId) || 8;
+                                    const displayedLocations = locations.slice(0, locations.length > 8 && visibleCount === 8 ? 7 : visibleCount);
+                                    const showMoreButton = locations.length > 8 && visibleCount < locations.length;
+                                    const totalItems = displayedLocations.length + (showMoreButton ? 1 : 0);
+                                    const gridCols = Math.min(totalItems, 4);
+                                    
+                                    return (
+                                        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                                            <div className="flex sm:grid gap-2 sm:gap-2" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+                                                {displayedLocations.map((location) => (
+                                                    <div
+                                                        key={location.id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleLocationSelect(location.id);
+                                                        }}
+                                                        className={`px-2 py-1.5 rounded-lg border-2 cursor-pointer transition-colors text-xs relative flex-shrink-0 min-w-[150px] max-w-[200px] sm:min-w-0 sm:max-w-none ${
+                                                            selectedClientLocationId === location.id
+                                                                ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                                                                : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
+                                                        }`}
+                                                    >
+                                                        <button
+                                                            onClick={(e) => handleDeleteLocation(location.id, e)}
+                                                            className="absolute top-0.5 right-0.5 p-0.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400 transition-colors z-10"
+                                                            title="Видалити локацію"
+                                                        >
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                        <div className="font-medium break-words pr-5 overflow-wrap-anywhere">{location.city_name}</div>
+                                                        <div className="text-gray-500 dark:text-gray-400 break-words overflow-wrap-anywhere mt-1">{location.warehouse_name}</div>
+                                                    </div>
+                                                ))}
+                                                {showMoreButton && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleAddLocation();
+                                                            setVisibleLocationsCount(prev => {
+                                                                const newMap = new Map(prev);
+                                                                newMap.set(selectedClientId, Math.min((prev.get(selectedClientId) || 8) + 8, locations.length));
+                                                                return newMap;
+                                                            });
                                                         }}
-                                                        disabled={!selectedNewCity || !selectedNewWarehouse}
-                                                        className="w-full px-2 py-1.5 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                                        className="px-2 py-1.5 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-xs flex-shrink-0 min-w-[150px] sm:min-w-0"
                                                     >
-                                                        Додати
+                                                        Показати ще
                                                     </button>
-                                                </div>
-                                            )}
-
-                                            {/* Список локацій */}
-                                            {locations.length > 0 && (() => {
-                                                const visibleCount = visibleLocationsCount.get(client.id) || 8;
-                                                const displayedLocations = locations.slice(0, locations.length > 8 && visibleCount === 8 ? 7 : visibleCount);
-                                                const showMoreButton = locations.length > 8 && visibleCount < locations.length;
-                                                const totalItems = displayedLocations.length + (showMoreButton ? 1 : 0);
-                                                const gridCols = Math.min(totalItems, 4);
-                                                
-                                                return (
-                                                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
-                                                        {displayedLocations.map((location) => (
-                                                            <div
-                                                                key={location.id}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleLocationSelect(location.id);
-                                                                }}
-                                                                className={`px-2 py-1.5 rounded-lg border-2 cursor-pointer transition-colors text-xs ${
-                                                                    selectedClientLocationId === location.id
-                                                                        ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                                                                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
-                                                                }`}
-                                                            >
-                                                                <div className="font-medium break-words">{location.city_name}</div>
-                                                                <div className="text-gray-500 dark:text-gray-400 break-words">{location.warehouse_name}</div>
-                                                            </div>
-                                                        ))}
-                                                        {showMoreButton && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setVisibleLocationsCount(prev => {
-                                                                        const newMap = new Map(prev);
-                                                                        newMap.set(client.id, Math.min((prev.get(client.id) || 8) + 8, locations.length));
-                                                                        return newMap;
-                                                                    });
-                                                                }}
-                                                                className="px-2 py-1.5 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-xs"
-                                                            >
-                                                                Показати ще
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    );
+                                })()}
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </>

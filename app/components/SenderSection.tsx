@@ -399,6 +399,44 @@ export default function SenderSection() {
         // selectedSenderId оновиться автоматично через useEffect
     };
 
+    const handleDeleteLocation = async (locationId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Запобігаємо вибору локації при кліку на кнопку видалення
+        
+        if (!confirm('Ви впевнені, що хочете видалити цю локацію?')) {
+            return;
+        }
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user found');
+
+            const { error } = await supabase
+                .from('sender')
+                .delete()
+                .eq('id', locationId)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            // Оновлюємо список локацій
+            setLocations(prev => prev.filter(loc => loc.id !== locationId));
+            
+            // Якщо видалена локація була вибрана, вибираємо першу доступну або скидаємо вибір
+            if (selectedLocationId === locationId) {
+                const remainingLocations = locations.filter(loc => loc.id !== locationId);
+                if (remainingLocations.length > 0) {
+                    setSelectedLocationId(remainingLocations[0].id);
+                } else {
+                    setSelectedLocationId(null);
+                    setSelectedSenderId(null);
+                }
+            }
+        } catch (err) {
+            console.error('Error deleting location:', err);
+            alert('Помилка при видаленні локації');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -603,29 +641,40 @@ export default function SenderSection() {
                     const gridCols = Math.min(totalItems, 4);
                     
                     return (
-                        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
-                            {displayedLocations.map((location) => (
-                                <div
-                                    key={location.id}
-                                    onClick={() => handleLocationSelect(location.id)}
-                                    className={`px-3 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
-                                        selectedLocationId === location.id
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                                            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
-                                    }`}
-                                >
-                                    <div className="text-sm font-medium break-words">{location.city_name}</div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 break-words">{location.sender_address_name}</div>
-                                </div>
-                            ))}
-                            {showMoreButton && (
-                                <button
-                                    onClick={() => setVisibleLocationsCount(prev => Math.min(prev + 8, locations.length))}
-                                    className="px-3 py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm"
-                                >
-                                    Показати ще
-                                </button>
-                            )}
+                        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                            <div className="flex sm:grid gap-3 sm:gap-3" style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+                                {displayedLocations.map((location) => (
+                                    <div
+                                        key={location.id}
+                                        onClick={() => handleLocationSelect(location.id)}
+                                        className={`px-3 py-2 rounded-lg border-2 cursor-pointer transition-colors relative flex-shrink-0 min-w-[200px] max-w-[250px] sm:min-w-0 sm:max-w-none ${
+                                            selectedLocationId === location.id
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                                                : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
+                                        }`}
+                                    >
+                                    <button
+                                        onClick={(e) => handleDeleteLocation(location.id, e)}
+                                        className="absolute top-1 right-1 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400 transition-colors z-10"
+                                        title="Видалити локацію"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                        <div className="text-sm font-medium break-words pr-6 overflow-wrap-anywhere">{location.city_name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 break-words overflow-wrap-anywhere mt-1">{location.sender_address_name}</div>
+                                    </div>
+                                ))}
+                                {showMoreButton && (
+                                    <button
+                                        onClick={() => setVisibleLocationsCount(prev => Math.min(prev + 8, locations.length))}
+                                        className="px-3 py-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-sm flex-shrink-0 min-w-[200px] sm:min-w-0"
+                                    >
+                                        Показати ще
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     );
                 })()}
