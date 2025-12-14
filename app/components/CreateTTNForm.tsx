@@ -15,7 +15,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [ttnNumber, setTtnNumber] = useState<string | null>(null);
-    const { selectedSenderId, selectedClientId } = useTTN();
+    const { selectedSenderId, selectedClientLocationId } = useTTN();
     const supabase = createClientComponentClient();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -29,8 +29,8 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Користувач не авторизований');
 
-            if (!selectedClientId || !selectedSenderId) {
-                throw new Error('Виберіть клієнта та відправника');
+            if (!selectedClientLocationId || !selectedSenderId) {
+                throw new Error('Виберіть локацію клієнта та відправника');
             }
 
             const response = await fetch('/api/ttn', {
@@ -39,7 +39,7 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    clientId: selectedClientId,
+                    clientLocationId: selectedClientLocationId,
                     senderId: selectedSenderId,
                     description,
                     cost: parseFloat(cost),
@@ -117,14 +117,14 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
                 </div>
             )}
 
-            {(!selectedSenderId || !selectedClientId) && (
+            {(!selectedSenderId || !selectedClientLocationId) && (
                 <div className="bg-yellow-50 dark:bg-yellow-900 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        {!selectedSenderId && !selectedClientId 
-                            ? 'Виберіть відправника та клієнта вище'
+                        {!selectedSenderId && !selectedClientLocationId 
+                            ? 'Виберіть відправника та локацію клієнта вище'
                             : !selectedSenderId 
                             ? 'Виберіть відправника вище'
-                            : 'Виберіть клієнта вище'
+                            : 'Виберіть локацію клієнта вище'
                         }
                     </p>
                 </div>
@@ -189,9 +189,9 @@ export default function CreateTTNForm({ onSuccess }: CreateTTNFormProps) {
             <div className="flex space-x-3">
                 <button
                     type="submit"
-                    disabled={loading || !selectedSenderId || !selectedClientId}
+                    disabled={loading || !selectedSenderId || !selectedClientLocationId}
                     className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
-                        loading || !selectedSenderId || !selectedClientId
+                        loading || !selectedSenderId || !selectedClientLocationId
                             ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                             : 'bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600'
                     }`}

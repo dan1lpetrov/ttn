@@ -1,17 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-
-interface City {
-    Ref: string;
-    Description: string;
-}
-
-interface Warehouse {
-    Ref: string;
-    Description: string;
-}
 
 interface AddClientFormProps {
     onSuccess?: () => void;
@@ -100,164 +90,9 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
-    const [cities, setCities] = useState<City[]>([]);
-    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-    const [selectedCity, setSelectedCity] = useState('');
-    const [selectedWarehouse, setSelectedWarehouse] = useState('');
-    const [citySearch, setCitySearch] = useState('');
-    const [warehouseSearch, setWarehouseSearch] = useState('');
-    const [showCityDropdown, setShowCityDropdown] = useState(false);
-    const [showWarehouseDropdown, setShowWarehouseDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isCityLoading, setIsCityLoading] = useState(false);
-    const [isWarehouseLoading, setIsWarehouseLoading] = useState(false);
-    const [cityError, setCityError] = useState<string | null>(null);
-    const [warehouseError, setWarehouseError] = useState<string | null>(null);
-    const cityDropdownRef = useRef<HTMLDivElement>(null);
-    const warehouseDropdownRef = useRef<HTMLDivElement>(null);
-    const warehouseInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClientComponentClient();
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
-                setShowCityDropdown(false);
-            }
-            if (warehouseDropdownRef.current && !warehouseDropdownRef.current.contains(event.target as Node)) {
-                setShowWarehouseDropdown(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const fetchCities = async (search: string) => {
-        if (search.length < 2) {
-            setShowCityDropdown(false);
-            return;
-        }
-
-        setIsCityLoading(true);
-        setCityError(null);
-
-        try {
-            const response = await fetch(`/api/nova-poshta/cities?search=${encodeURIComponent(search)}`);
-            if (!response.ok) {
-                throw new Error('Помилка при пошуку міст');
-            }
-            const data = await response.json();
-            if (data.success) {
-                // Фільтруємо дубльовані міста за Ref
-                const uniqueCities = data.data.filter((city: City, index: number, self: City[]) => 
-                    index === self.findIndex((c: City) => c.Ref === city.Ref)
-                );
-                setCities(uniqueCities);
-                setShowCityDropdown(true);
-            } else {
-                throw new Error(data.error || 'Помилка при пошуку міст');
-            }
-        } catch (err) {
-            console.error('Error fetching cities:', err);
-            setCityError('Помилка при пошуку міст. Спробуйте ще раз.');
-            setShowCityDropdown(false);
-        } finally {
-            setIsCityLoading(false);
-        }
-    };
-
-    const fetchWarehouses = async (search: string) => {
-        if (!selectedCity) return;
-
-        setIsWarehouseLoading(true);
-        setWarehouseError(null);
-
-        try {
-            const response = await fetch(`/api/nova-poshta/warehouses?cityRef=${selectedCity}&search=${encodeURIComponent(search)}`);
-            if (!response.ok) {
-                throw new Error('Помилка при пошуку відділень');
-            }
-            const data = await response.json();
-            if (data.success) {
-                // Фільтруємо дубльовані відділення за Ref
-                const uniqueWarehouses = data.data.filter((warehouse: Warehouse, index: number, self: Warehouse[]) => 
-                    index === self.findIndex((w: Warehouse) => w.Ref === warehouse.Ref)
-                );
-                setWarehouses(uniqueWarehouses);
-                setShowWarehouseDropdown(true);
-            } else {
-                throw new Error(data.error || 'Помилка при пошуку відділень');
-            }
-        } catch (err) {
-            console.error('Error fetching warehouses:', err);
-            setWarehouseError('Помилка при пошуку відділень. Спробуйте ще раз.');
-            setShowWarehouseDropdown(false);
-        } finally {
-            setIsWarehouseLoading(false);
-        }
-    };
-
-    const handleCitySelect = (city: City) => {
-        setSelectedCity(city.Ref);
-        setCitySearch(city.Description);
-        setShowCityDropdown(false);
-        setWarehouseSearch('');
-        setSelectedWarehouse('');
-        fetchWarehouses('');
-    };
-
-    const handleWarehouseSelect = (warehouse: Warehouse) => {
-        setSelectedWarehouse(warehouse.Ref);
-        setWarehouseSearch(warehouse.Description);
-        setShowWarehouseDropdown(false);
-    };
-
-    const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setCitySearch(value);
-        if (value.length >= 2) {
-            const timeoutId = setTimeout(() => fetchCities(value), 300);
-            return () => clearTimeout(timeoutId);
-        } else {
-            setShowCityDropdown(false);
-        }
-    };
-
-    const handleWarehouseInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setWarehouseSearch(value);
-        if (selectedCity) {
-            const timeoutId = setTimeout(() => fetchWarehouses(value), 300);
-            return () => clearTimeout(timeoutId);
-        }
-    };
-
-    const handleWarehouseInputFocus = () => {
-        if (selectedCity) {
-            fetchWarehouses(warehouseSearch);
-        }
-        // Прокручуємо інпут до верху екрана на мобільних пристроях
-        if (warehouseInputRef.current && window.innerWidth < 640) {
-            setTimeout(() => {
-                const input = warehouseInputRef.current;
-                if (input) {
-                    // Знаходимо модальне вікно
-                    const modal = input.closest('[role="dialog"], .fixed');
-                    if (modal) {
-                        // Прокручуємо модалку так, щоб інпут був вгорі
-                        const inputTop = input.getBoundingClientRect().top;
-                        const modalTop = (modal as HTMLElement).getBoundingClientRect().top;
-                        const scrollOffset = inputTop - modalTop - 10; // 10px відступ зверху
-                        (modal as HTMLElement).scrollTop = (modal as HTMLElement).scrollTop + scrollOffset;
-                    } else {
-                        // Якщо не знайшли модалку, використовуємо стандартну прокрутку
-                        input.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
-                    }
-                }
-            }, 300); // Збільшуємо затримку, щоб клавіатура встигла відкритись
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -284,22 +119,6 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No user found');
 
-            const selectedCityData = cities.find(city => city.Ref === selectedCity);
-            const selectedWarehouseData = warehouses.find(warehouse => warehouse.Ref === selectedWarehouse);
-
-            console.log('Selected data:', {
-                selectedCity,
-                selectedCityData,
-                selectedWarehouse,
-                selectedWarehouseData,
-                warehouseSearch,
-                warehousesCount: warehouses.length
-            });
-
-            if (!selectedWarehouseData && !warehouseSearch) {
-                throw new Error('Відділення не вибрано');
-            }
-
             console.log('Creating Nova Poshta entities...');
             
             // Створюємо контакт та контрагента в Новій Пошті
@@ -316,36 +135,28 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                 counterparty_full: counterparty
             });
 
-            const { error: insertError } = await supabase
+            // Створюємо клієнта (без локації)
+            const { error: insertClientError } = await supabase
                 .from('clients')
                 .insert([
                     {
                         first_name: firstName,
                         last_name: lastName,
                         phone: formattedPhone,
-                        city_ref: selectedCity,
-                        city_name: selectedCityData?.Description,
-                        warehouse_ref: selectedWarehouse,
-                        warehouse_name: selectedWarehouseData?.Description || warehouseSearch || '',
-                        warehouse_desc: selectedWarehouseData?.Description || warehouseSearch,
                         user_id: user.id,
                         contact_ref: contact.ContactRef || contact.Ref,
                         counterparty_ref: counterparty.Ref
                     }
                 ]);
 
-            if (insertError) {
-                console.error('Error inserting client:', insertError);
-                throw insertError;
+            if (insertClientError) {
+                console.error('Error inserting client:', insertClientError);
+                throw insertClientError;
             }
 
             setFirstName('');
             setLastName('');
             setPhone('');
-            setCitySearch('');
-            setWarehouseSearch('');
-            setSelectedCity('');
-            setSelectedWarehouse('');
             if (onSuccess) onSuccess();
         } catch (err) {
             console.error('Error adding client:', err);
@@ -422,83 +233,6 @@ export default function AddClientForm({ onSuccess, onCancel }: AddClientFormProp
                                 placeholder="+380XXXXXXXXX"
                                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
                             />
-                        </div>
-                        <div className="relative" ref={cityDropdownRef}>
-                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                Місто
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    id="city"
-                                    value={citySearch}
-                                    onChange={handleCityInputChange}
-                                    required
-                                    placeholder="Введіть мінімум 2 літери для пошуку"
-                                    className="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
-                                />
-                                {isCityLoading && (
-                                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 dark:border-blue-400"></div>
-                                    </div>
-                                )}
-                            </div>
-                            {cityError && (
-                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{cityError}</p>
-                            )}
-                            {showCityDropdown && cities.length > 0 && (
-                                <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
-                                    {cities.map((city, index) => (
-                                        <div
-                                            key={`${city.Ref}-${index}`}
-                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
-                                            onClick={() => handleCitySelect(city)}
-                                        >
-                                            <span className="block truncate">{city.Description}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div className="relative" ref={warehouseDropdownRef}>
-                            <label htmlFor="warehouse" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                Відділення
-                            </label>
-                            <div className="relative">
-                                <input
-                                    ref={warehouseInputRef}
-                                    type="text"
-                                    id="warehouse"
-                                    value={warehouseSearch}
-                                    onChange={handleWarehouseInputChange}
-                                    onFocus={handleWarehouseInputFocus}
-                                    required
-                                    disabled={!selectedCity}
-                                    placeholder={selectedCity ? "Введіть назву відділення" : "Спочатку виберіть місто"}
-                                    className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2.5 disabled:bg-gray-200 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-500 dark:disabled:text-gray-400"
-                                />
-                                {isWarehouseLoading && (
-                                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 dark:border-blue-400"></div>
-                                    </div>
-                                )}
-                            </div>
-                            {warehouseError && (
-                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{warehouseError}</p>
-                            )}
-                            {showWarehouseDropdown && warehouses.length > 0 && (
-                                <div className="absolute z-50 mt-1 left-0 w-[98vw] sm:w-full max-w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-lg max-h-[70vh] sm:max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm" style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(98vw, 100%)' }}>
-                                    {warehouses.map((warehouse, index) => (
-                                        <div
-                                            key={`${warehouse.Ref}-${index}`}
-                                            className="cursor-pointer select-none relative py-2 pl-4 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900 text-gray-900 dark:text-gray-100"
-                                            onClick={() => handleWarehouseSelect(warehouse)}
-                                        >
-                                            <span className="block truncate">{warehouse.Description}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                         <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             {onCancel && (

@@ -24,14 +24,18 @@ interface Client {
     id: string;
     first_name: string;
     last_name: string;
+    contact_ref: string;
+    counterparty_ref?: string;
+    [key: string]: string | number | boolean | undefined;
+}
+
+interface ClientLocation {
+    id: string;
     city_name: string;
     warehouse_name: string;
     warehouse_ref: string;
     city_ref: string;
-    contact_ref: string;
-    counterparty_ref?: string;
-    phone: string;
-    [key: string]: string | number | boolean | undefined;
+    client_id: string;
 }
 
 interface Sender {
@@ -159,10 +163,10 @@ async function getWarehouseIndex(warehouseRef: string, cityRef: string): Promise
 }
 
 /**
- * Створює адресу контрагента для відправника/отримувача
- * SenderAddress/RecipientAddress має бути Ref адреси контрагента, а не Ref відділення!
+ * Отримує або створює адресу контрагента для відправника/отримувача
+ * Спочатку перевіряє існуючі адреси, якщо немає - використовує warehouse_ref
  */
-async function createCounterpartyAddress(
+async function getOrCreateCounterpartyAddress(
     counterpartyRef: string, 
     warehouseRef: string, 
     warehouseName: string,
@@ -174,41 +178,42 @@ async function createCounterpartyAddress(
     }
 
     try {
-        const request = {
+        // Спочатку спробуємо отримати існуючі адреси контрагента
+        const getAddressesRequest = {
             apiKey: apiKey,
-            modelName: 'Address',
-            calledMethod: 'save',
+            modelName: 'Counterparty',
+            calledMethod: 'getCounterpartyAddresses',
             methodProperties: {
-                CounterpartyRef: counterpartyRef,
-                StreetRef: '', // Для відділення не потрібен StreetRef
-                BuildingNumber: '',
-                Flat: '',
-                Note: warehouseName,
-                CounterpartyProperty: 'Recipient' // Використовуємо Recipient, оскільки API не дозволяє створювати Sender
+                Ref: counterpartyRef,
+                Page: '1'
             }
         };
 
-        console.log('Creating counterparty address:', JSON.stringify(request, null, 2));
+        console.log('Getting existing counterparty addresses:', JSON.stringify(getAddressesRequest, null, 2));
 
-        const response = await fetch(NOVA_POSHTA_API_URL, {
+        const getAddressesResponse = await fetch(NOVA_POSHTA_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request)
+            body: JSON.stringify(getAddressesRequest)
         });
 
-        const data = await response.json();
-        console.log('Create counterparty address response:', JSON.stringify(data, null, 2));
+        const getAddressesData = await getAddressesResponse.json();
+        console.log('Get counterparty addresses response:', JSON.stringify(getAddressesData, null, 2));
         
-        if (data.success && data.data && data.data[0]) {
-            const addressRef = data.data[0].Ref;
-            console.log('Counterparty address created with Ref:', addressRef);
+        // Якщо є існуючі адреси, використовуємо першу
+        if (getAddressesData.success && getAddressesData.data && getAddressesData.data.length > 0) {
+            const addressRef = getAddressesData.data[0].Ref;
+            console.log('Using existing counterparty address with Ref:', addressRef);
             return addressRef;
-        } else {
-            console.warn('Failed to create counterparty address, using warehouse ref');
-            return warehouseRef;
         }
+
+        // Якщо адрес немає, для відділень використовуємо warehouse_ref напряму
+        // API не дозволяє створювати адресу для ContactPerson без StreetRef
+        console.log('No existing addresses found, using warehouse ref directly');
+        return warehouseRef;
     } catch (error) {
-        console.error('Error creating counterparty address:', error);
+        console.error('Error getting counterparty addresses:', error);
+        // У разі помилки використовуємо warehouse_ref
         return warehouseRef;
     }
 }
@@ -256,13 +261,16 @@ async function getSenderCounterpartyRef(phone: string, apiKey: string | null): P
     return null;
 }
 
-async function createNovaPoshtaTTN(client: Client, sender: Sender, description: string, cost: number, apiKey: string) {
+async function createNovaPoshtaTTN(client: Client, clientLocation: ClientLocation, sender: Sender, description: string, cost: number, apiKey: string) {
     console.log('Creating TTN for client:', { 
         id: client.id, 
-        city_name: client.city_name, 
-        warehouse_ref: client.warehouse_ref,
-        city_ref: client.city_ref,
         contact_ref: client.contact_ref 
+    });
+    console.log('Creating TTN for client location:', { 
+        id: clientLocation.id,
+        city_name: clientLocation.city_name, 
+        warehouse_ref: clientLocation.warehouse_ref,
+        city_ref: clientLocation.city_ref
     });
     console.log('Creating TTN for sender:', { 
         id: sender.id, 
@@ -272,8 +280,8 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
     });
 
     // Використовуємо збережені рефи з бази даних
-    const recipientCityRef = client.city_ref;
-    const recipientWarehouseRef = client.warehouse_ref;
+    const recipientCityRef = clientLocation.city_ref;
+    const recipientWarehouseRef = clientLocation.warehouse_ref;
     
     if (!recipientCityRef) {
         throw new Error('Місто отримувача не вказано');
@@ -287,29 +295,16 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
     // Вони використовуються тільки для InternetDocumentGeneral.save
     // Тому ми їх не отримуємо для InternetDocument.save
 
-    // Створюємо адреси контрагентів
-    // SenderAddress/RecipientAddress має бути Ref адреси контрагента, а не Ref відділення!
-    const senderAddressRef = await createCounterpartyAddress(
-        sender.sender_ref,
-        sender.sender_address_ref,
-        String(sender.sender_address_name || ''),
-        apiKey
-    );
-
-    const recipientAddressRef = await createCounterpartyAddress(
-        client.counterparty_ref || client.contact_ref,
-        recipientWarehouseRef,
-        client.warehouse_name || '',
-        apiKey
-    );
-
+    // Для відділень використовуємо warehouse_ref напряму
+    // SenderAddress/RecipientAddress має бути Ref відділення (warehouse ref)
     console.log('Using saved refs:', {
         recipientCityRef,
         recipientWarehouseRef,
-        senderAddressRef,
-        recipientAddressRef,
+        senderAddressRef: sender.sender_address_ref,
+        recipientAddressRef: recipientWarehouseRef,
         senderRef: sender.sender_ref,
-        recipientRef: client.counterparty_ref || client.contact_ref
+        recipientRef: client.counterparty_ref,
+        contactRecipientRef: client.contact_ref
     });
 
     // Форматуємо дату в форматі DD.MM.YYYY
@@ -322,8 +317,11 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
     // Тому ми їх не отримуємо для InternetDocument.save
 
     // Перевіряємо наявність необхідних Ref для отримувача
-    if (!client.counterparty_ref && !client.contact_ref) {
+    if (!client.counterparty_ref) {
         throw new Error('Ref контрагента-отримувача не знайдено. Потрібно створити клієнта через форму.');
+    }
+    if (!client.contact_ref) {
+        throw new Error('Ref контактної особи-отримувача не знайдено. Потрібно створити клієнта через форму.');
     }
 
     // Створюємо ТТН через InternetDocument (використовуємо вже створені контрагенти)
@@ -346,16 +344,16 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
             // Дані відправника
             CitySender: sender.city_ref,
             Sender: sender.sender_ref, // Ref контрагента-відправника
-            SenderAddress: senderAddressRef, // Ref адреси контрагента-відправника
+            SenderAddress: sender.sender_address_ref, // Ref відділення відправника (warehouse ref)
             ContactSender: sender.contact_sender_ref, // Ref контактної особи-відправника
             SendersPhone: sender.phone.replace(/\D/g, ''),
 
             // Дані отримувача (використовуємо Ref вже створеного контрагента)
-            Recipient: client.counterparty_ref || client.contact_ref, // Ref контрагента-отримувача
+            Recipient: client.counterparty_ref, // Ref контрагента-отримувача (обов'язково counterparty_ref, не contact_ref)
             ContactRecipient: client.contact_ref, // Ref контактної особи-отримувача
             CityRecipient: recipientCityRef, // Ref міста отримувача
-            RecipientAddress: recipientAddressRef, // Ref адреси контрагента-отримувача (відділення)
-            RecipientsPhone: client.phone.replace(/\D/g, ''), // Телефон отримувача
+            RecipientAddress: recipientWarehouseRef, // Ref відділення отримувача (warehouse ref напряму)
+            RecipientsPhone: (client.phone as string)?.replace(/\D/g, '') || '', // Телефон отримувача
             
             // Примітка: WarehouseIndex НЕ потрібні для InternetDocument.save
             // Вони використовуються тільки для InternetDocumentGeneral.save
@@ -375,7 +373,7 @@ async function createNovaPoshtaTTN(client: Client, sender: Sender, description: 
     console.log('Method:', requestData.calledMethod);
     console.log('Sender Ref:', sender.sender_ref);
     console.log('Contact Sender Ref:', sender.contact_sender_ref);
-    console.log('Sender Address Ref:', senderAddressRef);
+    console.log('Sender Address Ref:', sender.sender_address_ref);
     console.log('Full request data:', JSON.stringify(requestData, null, 2));
 
     const response = await fetch(NOVA_POSHTA_API_URL, {
@@ -417,9 +415,9 @@ export async function POST(request: Request) {
     try {
         const cookieStore = cookies();
         const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-        const { clientId, description, cost, senderId } = await request.json();
+        const { clientLocationId, description, cost, senderId } = await request.json();
 
-        console.log('Creating TTN with:', { clientId, senderId, description, cost });
+        console.log('Creating TTN with:', { clientLocationId, senderId, description, cost });
 
         // Перевіряємо чи користувач авторизований
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -439,22 +437,131 @@ export async function POST(request: Request) {
             );
         }
 
-        // Перевіряємо чи існує клієнт
-        const { data: client, error: clientError } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('id', clientId)
+        // Перевіряємо чи існує локація клієнта
+        const { data: clientLocation, error: clientLocationError } = await supabase
+            .from('client_locations')
+            .select('*, clients!inner(*)')
+            .eq('id', clientLocationId)
             .single();
 
-        if (clientError || !client) {
-            console.error('Client error:', clientError);
+        if (clientLocationError || !clientLocation) {
+            console.error('Client location error:', clientLocationError);
             return NextResponse.json(
-                { error: 'Клієнт не знайдений', details: clientError?.message },
+                { error: 'Локація клієнта не знайдена', details: clientLocationError?.message },
                 { status: 404 }
             );
         }
 
-        console.log('Client found:', { id: client.id, city_name: client.city_name, contact_ref: client.contact_ref });
+        const client = Array.isArray(clientLocation.clients) ? clientLocation.clients[0] : clientLocation.clients;
+        if (!client) {
+            return NextResponse.json(
+                { error: 'Клієнт не знайдений' },
+                { status: 404 }
+            );
+        }
+
+        console.log('Client location found:', { 
+            locationId: clientLocation.id,
+            city_name: clientLocation.city_name, 
+            warehouse_name: clientLocation.warehouse_name,
+            client_id: client.id,
+            counterparty_ref: client.counterparty_ref,
+            contact_ref: client.contact_ref 
+        });
+
+        // Перевіряємо, чи контрагент належить поточному користувачу
+        if (client.counterparty_ref && API_KEY) {
+            try {
+                const checkRequest = {
+                    apiKey: API_KEY,
+                    modelName: 'CounterpartyGeneral',
+                    calledMethod: 'getCounterparties',
+                    methodProperties: {
+                        CounterpartyProperty: 'Recipient',
+                        Page: '1'
+                    }
+                };
+
+                const checkResponse = await fetch(NOVA_POSHTA_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(checkRequest)
+                });
+
+                const checkData = await checkResponse.json();
+                
+                if (checkData.success && checkData.data) {
+                    const counterpartyExists = checkData.data.some((cp: { Ref: string }) => cp.Ref === client.counterparty_ref);
+                    
+                    if (!counterpartyExists) {
+                        console.warn('⚠️ Counterparty does not belong to current user. Attempting to recreate...');
+                        
+                        // Спробуємо перестворити контрагента
+                        const recreateRequest = {
+                            apiKey: API_KEY,
+                            modelName: 'Counterparty',
+                            calledMethod: 'save',
+                            methodProperties: {
+                                FirstName: client.first_name,
+                                LastName: client.last_name,
+                                Phone: client.phone,
+                                CounterpartyType: 'PrivatePerson',
+                                CounterpartyProperty: 'Recipient'
+                            }
+                        };
+
+                        const recreateResponse = await fetch(NOVA_POSHTA_API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(recreateRequest)
+                        });
+
+                        const recreateData = await recreateResponse.json();
+                        
+                        if (recreateData.success && recreateData.data && recreateData.data[0]) {
+                            const newCounterpartyRef = recreateData.data[0].Ref;
+                            const newContactRef = recreateData.data[0].ContactPerson?.data?.[0]?.Ref;
+                            
+                            // Оновлюємо рефи в базі даних
+                            const { error: updateError } = await supabase
+                                .from('clients')
+                                .update({
+                                    counterparty_ref: newCounterpartyRef,
+                                    contact_ref: newContactRef || client.contact_ref
+                                })
+                                .eq('id', client.id);
+
+                            if (updateError) {
+                                console.error('Error updating client refs:', updateError);
+                            } else {
+                                console.log('✅ Client counterparty recreated and updated:', { 
+                                    old_ref: client.counterparty_ref, 
+                                    new_ref: newCounterpartyRef 
+                                });
+                                // Оновлюємо client об'єкт для подальшого використання
+                                client.counterparty_ref = newCounterpartyRef;
+                                if (newContactRef) {
+                                    client.contact_ref = newContactRef;
+                                }
+                            }
+                        } else {
+                            const errorMsg = recreateData.errors?.join(', ') || recreateData.errorCodes?.join(', ') || 'Unknown error';
+                            console.error('Failed to recreate counterparty:', errorMsg);
+                            return NextResponse.json(
+                                { 
+                                    error: 'Контрагент клієнта не належить вашому обліковому запису. Будь ласка, видаліть та створіть клієнта заново.',
+                                    details: errorMsg
+                                },
+                                { status: 400 }
+                            );
+                        }
+                    }
+                }
+            } catch (checkError) {
+                console.error('Error checking counterparty:', checkError);
+                // Продовжуємо, якщо перевірка не вдалася
+            }
+        }
 
         // Перевіряємо чи існує відправник
         const { data: sender, error: senderError } = await supabase
@@ -542,7 +649,7 @@ export async function POST(request: Request) {
 
         // Створюємо ТТН в Новій Пошті
         console.log('Creating TTN in Nova Poshta...');
-        const novaPoshtaTTN = await createNovaPoshtaTTN(client, sender, description, parseFloat(cost), API_KEY);
+        const novaPoshtaTTN = await createNovaPoshtaTTN(client, clientLocation, sender, description, parseFloat(cost), API_KEY);
         console.log('TTN created in Nova Poshta:', novaPoshtaTTN);
 
         // Зберігаємо ТТН в нашій БД
@@ -550,7 +657,8 @@ export async function POST(request: Request) {
             .from('ttn')
             .insert([
                 {
-                    client_id: clientId,
+                    client_id: client.id,
+                    client_location_id: clientLocation.id,
                     sender_id: senderId,
                     description,
                     cost: parseFloat(cost),
